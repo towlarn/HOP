@@ -11,7 +11,7 @@ public class StreamInputSplit implements InputSplit {
 	//testing comment
 	@Override
 	public long getLength() throws IOException {
-		// TODO Auto-generated method stub
+		// Return 0 for now, since it is an infinite stream.
 		return 0;
 	}
 
