@@ -7,7 +7,8 @@ import java.io.IOException;
 import org.apache.hadoop.mapred.InputSplit;
 
 public class StreamInputSplit implements InputSplit {
-
+	
+	//testing comment
 	@Override
 	public long getLength() throws IOException {
 		// TODO Auto-generated method stub
