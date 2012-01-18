@@ -13,6 +13,14 @@ public class StreamInputSplit implements InputSplit {
 	private InetAddress addr;
 	private int port;
 
+	public InetAddress getAddr() {
+		return addr;
+	}
+
+	public int getPort() {
+		return port;
+	}
+
 	@Override
 	public long getLength() throws IOException {
 		// Return 0 for now, since it is an infinite stream.

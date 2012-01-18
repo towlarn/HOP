@@ -65,6 +65,7 @@ import org.apache.hadoop.mapred.buffer.impl.Buffer;
 import org.apache.hadoop.mapred.buffer.impl.JOutputBuffer;
 import org.apache.hadoop.mapred.buffer.net.BufferRequest;
 import org.apache.hadoop.mapred.buffer.net.BufferExchangeSink;
+import org.apache.hadoop.mapred.lib.stream.StreamInputSplit;
 import org.apache.hadoop.util.IndexedSortable;
 import org.apache.hadoop.util.IndexedSorter;
 import org.apache.hadoop.util.Progress;
@@ -302,6 +303,11 @@ public class MapTask extends Task {
 				job.setLong("map.input.length", fileSplit.getLength());
 			}
 
+			// may need to do instanceof StreamInputSplit here and set job configs?
+			if (instantiatedSplit instanceof StreamInputSplit) {
+				StreamInputSplit streamSplit = (StreamInputSplit) instantiatedSplit;
+				// job.set("map.input.file", streamSplit.getPath().toString());
+			}
 
 			RecordReader rawIn =                  // open input
 				job.getInputFormat().getRecordReader(instantiatedSplit, job, reporter);
