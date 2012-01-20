@@ -13,6 +13,8 @@ public class StreamInputSplit implements InputSplit {
 	private InetAddress addr;
 	private int port;
 	
+	public StreamInputSplit() throws IOException {}
+	
 	public StreamInputSplit(String addr, int port) throws IOException {
 		this.addr = InetAddress.getByName(addr);
 		this.port = port;
@@ -35,7 +37,9 @@ public class StreamInputSplit implements InputSplit {
 	@Override
 	public String[] getLocations() throws IOException {
 		// Each element of array is a <host,port> pair of incoming stream
-		return null;
+		String[] ret = new String[1];
+		ret[0] = addr.getHostAddress();
+		return ret;
 	}
 
 	@Override
@@ -46,7 +50,7 @@ public class StreamInputSplit implements InputSplit {
 
 	@Override
 	public void write(DataOutput out) throws IOException {
-		UTF8.writeString(out, addr.toString());
+		UTF8.writeString(out, addr.getHostAddress());
 		out.writeInt(port);		
 	}
 	

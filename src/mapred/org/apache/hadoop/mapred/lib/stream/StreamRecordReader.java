@@ -77,8 +77,19 @@ public class StreamRecordReader implements RecordReader<LongWritable, Text> {
 		key.set(0);
 		value.clear();
 
-		String line = in.readLine();
-		value.set(line);
+		try {
+			String line = in.readLine();
+			if (line == null){
+				line = "";
+			}
+			value.set(line);
+			
+			System.out.println("Value was set as " + line);
+			
+		} catch (IOException e){
+			// if the stream is closed
+			return false;
+		}
 		
 		return true;
 	}
