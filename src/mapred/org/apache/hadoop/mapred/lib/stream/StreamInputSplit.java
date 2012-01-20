@@ -12,6 +12,11 @@ public class StreamInputSplit implements InputSplit {
 	
 	private InetAddress addr;
 	private int port;
+	
+	public StreamInputSplit(String addr, int port) throws IOException {
+		this.addr = InetAddress.getByName(addr);
+		this.port = port;
+	}
 
 	public InetAddress getAddr() {
 		return addr;
@@ -45,10 +50,12 @@ public class StreamInputSplit implements InputSplit {
 		out.writeInt(port);		
 	}
 	
+	/*
 	public static StreamInputSplit read(DataInput in) throws IOException {
 		StreamInputSplit w = new StreamInputSplit();
 		w.readFields(in);
 		return w;
 	}
+	*/
 
 }
