@@ -158,9 +158,6 @@ public class WordCountStream extends Configured implements Tool {
     conf.setNumMapTasks(num_mappers);
     conf.setBoolean("mapred.map.pipeline", true);
     
-    
-    
-    
     StreamInputFormat.setInputStreams(conf, other_args.get(0));
     FileOutputFormat.setOutputPath(conf, new Path(other_args.get(1)));
     
@@ -172,6 +169,9 @@ public class WordCountStream extends Configured implements Tool {
         conf.setCombinerClass(Reduce.class);
         conf.setReducerClass(Reduce.class);
     }
+    
+    System.out.println("Running WordCountStream on input: "+other_args.get(0));
+    System.out.println("output: "+other_args.get(1));
     
     JobClient.runJob(conf);
     return 0;

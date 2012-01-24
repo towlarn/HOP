@@ -15,6 +15,7 @@ public class StreamRecordReader implements RecordReader<LongWritable, Text> {
 
 	private Socket socket;
 	private BufferedReader in;
+	private float progress;
 
 	/**
 	 * NOTE: Currently, the "Key" value has no meaning. It is always set as 0.
@@ -30,6 +31,7 @@ public class StreamRecordReader implements RecordReader<LongWritable, Text> {
 		int port = split.getPort();
 		socket = new Socket(addr, port);
 		in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+		progress = 0;
 	}
 
 	@Override
@@ -42,6 +44,7 @@ public class StreamRecordReader implements RecordReader<LongWritable, Text> {
 			socket.close();
 			socket = null;
 		}
+		progress = 1;
 	}
 
 	@Override
@@ -62,17 +65,21 @@ public class StreamRecordReader implements RecordReader<LongWritable, Text> {
 
 	@Override
 	public float getProgress() {
-		// TODO Return 0 for now
-		return 0;
+		return progress;
 	}
 
 
 	@Override
-	public synchronized boolean next(LongWritable key, Text value) throws IOException {
+	/**
+	 * This method MUST return false to signify end of map task
+	 */
+	public synchronized boolean next(LongWritable key, Text value) throws IOException {		
 		if (in == null || socket == null || socket.isClosed()) {
 			this.close();
 			return false;
 		}
+		
+		boolean end = false;
 		
 		key.set(0);
 		value.clear();
@@ -81,16 +88,31 @@ public class StreamRecordReader implements RecordReader<LongWritable, Text> {
 			String line = in.readLine();
 			if (line == null){
 				line = "";
+				end = true;
 			}
+			
+			// testing
+			if (line.equals("quit")){
+				end = true;
+				System.out.println("Closed the socket connection");			
+				value.set(line);
+			}
+			// end
+			
 			value.set(line);
 			
 			System.out.println("Value was set as " + line);
 			
 		} catch (IOException e){
 			// if the stream is closed
-			return false;
+			end = true;
 		}
 		
-		return true;
+		if (end){
+			this.close();
+			progress = 1;
+		}
+		
+		return !end;
 	}
 }
