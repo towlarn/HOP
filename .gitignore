@@ -1,0 +1,16 @@
+.classpath
+.project
+CHANGES.txt
+LICENSE.txt
+NOTICE.txt
+README.txt
+bin/*
+build/*
+classes/*
+conf/*
+contrib/*
+docs/*
+hadoop-hop-0.2-ant.jar
+hadoop-hop-0.2-core.jar
+hadoop-hop-0.2-examples.jar
+hadoop-hop-0.2-tools.jar
