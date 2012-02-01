@@ -35,16 +35,17 @@ public class StreamRecordReader implements RecordReader<LongWritable, Text> {
 	}
 
 	@Override
-	public synchronized void close() throws IOException {
+	public synchronized void close(){
 		if (in != null){
-			in.close();
+			try { in.close(); } 
+			catch (IOException e) { e.printStackTrace(); }
 			in = null;
 		}
 		if (socket != null){
-			socket.close();
+			try { socket.close(); } 
+			catch (IOException e) { e.printStackTrace(); }
 			socket = null;
 		}
-		progress = 1;
 	}
 
 	@Override
