@@ -1,0 +1,6 @@
+#!/bin/sh
+
+bin/hadoop -rmr output
+bin/hadoop jar hadoop-hop-0.2-examples.jar wordcountstream $1 output
+bin/hadoop fs -get output output
+ls ./output
