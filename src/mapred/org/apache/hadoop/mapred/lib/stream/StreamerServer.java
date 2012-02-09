@@ -3,44 +3,63 @@ package org.apache.hadoop.mapred.lib.stream;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.sql.SQLException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class StreamerServer {
 
-	private int port;
-	private int offset;
-	private int rows;
-	private int SOCKET_TIMEOUT = 3 * 60 * 1000; // 3mins
+	public static final int QUEUE_SIZE = 10 * 100;
+	public static final long WAIT_THRESHOLD = 1000; // in milliseconds
+	public static final double SPEEDUP_FACTOR = 3.0;
 	
-	private String connectionURL = "jdbc:mysql://kozmo.cis.upenn.edu:3306/twitter02?user=towlarn&password=DU4YzhjM";
-	private String query = "select uid,timestamp,text from streaming_data ORDER BY timestamp asc";
+	private int port;
+	private int rows;
+	private int SOCKET_TIMEOUT = 3 * 60 * 1000;
 	
 	private ThreadPoolExecutor tp;
 	private ServerSocket ss;
 	
 	private boolean isShutdown;
 	
+	private final BlockingQueue<String> queue;
+	
+	private long initialVirtualTime = -1;
+	private long initialTime = -1;
+	private boolean timeSet;
+	
 	public StreamerServer(int port, int offset, int rows){
 		this.port = port;
-		this.offset = offset;
 		this.rows = rows;
 		
 		isShutdown = false;
+		timeSet = false;
 		
-		this.query += " limit " + this.rows; 
+		queue = new LinkedBlockingQueue<String>(QUEUE_SIZE);
 		
 		try {
 			init();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+	}
+	
+	public synchronized void setInitialTimes(long virtual, long real){
+		initialVirtualTime = virtual;
+		initialTime = real;
 	}
 	
 	private void init() throws IOException{
@@ -54,9 +73,15 @@ public class StreamerServer {
 				keepAliveTime, TimeUnit.SECONDS, queue);
 
 		ss = new ServerSocket(port);
-
+		
+		createDaemonListener();
+		createDaemonProducer();
+		//createDaemonProducer();
+	}
+	
+	private void createDaemonListener(){
 		// thread used to receive commands
-		tp.execute(new Runnable(){
+		Runnable listener = new Runnable(){
 			public void run() {
 				BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
 				String input;
@@ -73,7 +98,83 @@ public class StreamerServer {
 					e.printStackTrace();
 				}
 			}
-		});
+		};
+		Thread t = new Thread(listener);
+		t.setDaemon(true);
+		t.start();
+	}
+	
+	private void createDaemonProducer() throws IOException {
+		Runnable producer = new DataStreamer(queue, rows);
+		
+		Thread t = new Thread(producer);
+		t.setDaemon(true);
+		t.setPriority(Thread.MAX_PRIORITY);
+		t.start();
+	}
+	
+	private long parseTime(String data){
+		long time = -1;
+		if (data != null){
+			Pattern p = Pattern.compile("\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}");
+			Matcher m = p.matcher(data);
+			if(m.find()){
+				String t = m.group();
+				SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+				
+				try {
+					Date date = sdf.parse(t);
+					time = date.getTime();
+				} catch (ParseException e) {}
+			}
+		}
+		return time;
+	}
+	
+	@SuppressWarnings("unused")
+	private void createConsumer(Socket s){
+		createConsumer(s, 0);
+	}
+	private void createConsumer(final Socket s, final int id){
+		Runnable consumer = new Runnable(){
+			public void run() {
+				int i = 0;
+				try {
+					PrintWriter out = new PrintWriter(s.getOutputStream(), true);
+					while(true){
+						// NOTE: possible race condition between peek() and take(), although this shouldn't matter too much.
+						String data = queue.peek();
+						long time = parseTime(data);
+						
+						// sleep for "difference" milliseconds
+						if (timeSet && time > 0){
+							long curr = System.currentTimeMillis();
+							long virtualOffset = (long) ((time - initialVirtualTime)/SPEEDUP_FACTOR);
+							long difference = initialTime + virtualOffset - curr;
+							if (difference > WAIT_THRESHOLD){
+								System.err.println(i+": sleeping for "+(difference)+"ms (realtime)");
+								Thread.sleep(difference);
+							}
+						}
+						
+						data = queue.take();
+						
+						if (!timeSet && time > 0){
+							time = parseTime(data);
+							setInitialTimes(time, System.currentTimeMillis());
+							timeSet = true;
+						}
+						out.println(data);
+						i++;
+					}
+				} catch (IOException e) {
+					e.printStackTrace();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+		};
+		tp.execute(consumer);
 	}
 	
 	public void run(){
@@ -83,9 +184,10 @@ public class StreamerServer {
 			while( !isShutDown() ){
 				ss.setSoTimeout(SOCKET_TIMEOUT);
 				Socket s = ss.accept();
-				String q = query + " offset " + (offset + (i * rows));
-				System.out.println("executing query:  " + q);
-				tp.execute(new DataStreamer(connectionURL, q, s, i));
+				
+				// create a new consumer thread as a data stream
+				createConsumer(s, i);
+				
 				i++;
 			}
 		}
@@ -97,7 +199,6 @@ public class StreamerServer {
 			e.printStackTrace();
 		} finally {
 			this.shutdown();
-			tp.shutdown();
 		}
 	}
 	
@@ -108,6 +209,8 @@ public class StreamerServer {
 			} catch (IOException e) {}
 			ss = null;
 		}
+		tp.shutdown();
+		tp.shutdownNow();
 		System.out.println("Exit Streamer Server...");
 	}
 
