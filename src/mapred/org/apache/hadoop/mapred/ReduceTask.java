@@ -347,6 +347,10 @@ public class ReduceTask extends Task {
 	protected void stream(JobConf job, InputCollector inputCollector,
 			BufferExchangeSink sink, Reporter reporter, BufferUmbilicalProtocol umbilical) throws IOException {
 		int window = job.getInt("mapred.reduce.window", 1000);
+		//ivan: 
+		int slidingTime = job.getInt("mapred.reduce.slidingTime", 1000);
+		int maxBucketSize = window/slidingTime; // ivan: assume window size is product of slidingTime
+		
 		long starttime = System.currentTimeMillis();
 		synchronized (this) {
 			LOG.info("ReduceTask " + getTaskID() + ": in stream function.");
@@ -360,10 +364,13 @@ public class ReduceTask extends Task {
 							 (System.currentTimeMillis() - windowTimeStamp) + "ms.");
 					windowTimeStamp = System.currentTimeMillis();
 					reduce(job, reporter, inputCollector, umbilical, sink.getProgress(), null);
-					inputCollector.free(); // Free current data
+					//inputCollector.free(); // Free current data
+					((JInputBuffer) inputCollector).freeTrailingBucket(maxBucketSize);
+					((JInputBuffer) inputCollector).addNewBucket();
 				}
 				
-				try { this.wait(window);
+				try { this.wait(slidingTime);
+				//ivan: this.wait(slidingTime);
 				} catch (InterruptedException e) { }
 			}
 			copyPhase.complete();
