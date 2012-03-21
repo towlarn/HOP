@@ -42,10 +42,12 @@ public class ExampleDriver {
       pgd.addClass("wordcount", WordCount.class,
                    "A map/reduce program that counts the words in the input files.");
       
+      // continuous streamers
       pgd.addClass("wordcountstream", WordCountStream.class,
       			   "A map/reduce program that counts the words in the input streams.");
       pgd.addClass("twittercount", TwitterCount.class,
       			   "A map/reduce program that counts the uuid of twitter feeds in the input files.");
+      
       
       
       pgd.addClass("cq", CQ.class, 

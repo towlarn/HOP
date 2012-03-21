@@ -831,7 +831,8 @@ public class JobClient extends Configured implements MRConstants, Tool  {
     job.getOutputFormat().checkOutputSpecs(fs, job);
 
     boolean stream = job.getBoolean("mapred.stream", false) ||
-    				 job.getBoolean("mapred.job.monitor", false);
+    				 job.getBoolean("mapred.job.monitor", false) || 
+    				 job.getBoolean("mapred.streaming.window", false);
     
     if (!stream) {
     	// Create the splits for the job

@@ -368,8 +368,8 @@ public class JInputBuffer<K extends Object, V extends Object> extends
 			.synchronizedList(new LinkedList<JInput>());
 
 	// ivan:
-	private final LinkedList<LinkedList<JInput>> lst_buckets = (LinkedList<LinkedList<JInput>>) Collections
-			.synchronizedList(new LinkedList<LinkedList<JInput>>());
+	private final List<List<JInput>> lst_buckets = Collections
+			.synchronizedList(new LinkedList<List<JInput>>());
 
 	// A custom comparator for map output files. Here the ordering is determined
 	// by the file's size and path. In case of files with same size and
@@ -466,7 +466,7 @@ public class JInputBuffer<K extends Object, V extends Object> extends
 
 		if(this.lst_buckets.size() > maxBucketSize){ // only start to free when the window is filled
 
-			LinkedList<JInput> oldestBucket = this.lst_buckets.remove();
+			List<JInput> oldestBucket = this.lst_buckets.remove(0);
 
 			Iterator<JInput> memIterator =  inputFilesInMemory.iterator();
 			while(memIterator.hasNext()){
@@ -751,8 +751,8 @@ public class JInputBuffer<K extends Object, V extends Object> extends
 				inputFilesInMemory.add(input);
 			}
 			
-			synchronized (this.lst_buckets.getLast()) {
-				this.lst_buckets.getLast().add(input);
+			synchronized (this.lst_buckets.get(this.lst_buckets.size()-1)) {
+				this.lst_buckets.get(this.lst_buckets.size()-1).add(input);
 			}
 			
 			return true;

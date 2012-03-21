@@ -231,7 +231,8 @@ public class MapTask extends Task {
 		LOG.info("numReduceTasks: " + numReduceTasks);
 		
 		boolean stream = job.getBoolean("mapred.stream", false) ||
-						 job.getBoolean("mapred.job.monitor", false);
+						 job.getBoolean("mapred.job.monitor", false) || 
+						 job.getBoolean("mapred.streaming.window", false);
 		if (stream) {
 			Class mapCombiner = job.getClass("mapred.map.combiner.class", null);
 			if (mapCombiner != null) {
@@ -246,6 +247,31 @@ public class MapTask extends Task {
 			}
 			JOutputBuffer buffer = new JOutputBuffer(bufferUmbilical, this, job, 
 					reporter, getProgress(), false, keyClass, valClass, codecClass);
+			
+			
+			// reinstantiate the split
+			try {
+				instantiatedSplit = (InputSplit) 
+				ReflectionUtils.newInstance(job.getClassByName(splitClass), job);
+			} catch (ClassNotFoundException exp) {
+				IOException wrap = new IOException("Split class " + splitClass + 
+				" not found");
+				wrap.initCause(exp);
+				throw wrap;
+			}
+			DataInputBuffer splitBuffer = new DataInputBuffer();
+			splitBuffer.reset(split.get(), 0, split.getSize());
+			instantiatedSplit.readFields(splitBuffer);
+			
+			// if it is a file split, we can give more details
+			if (instantiatedSplit instanceof StreamInputSplit) {
+				StreamInputSplit sipSplit = (StreamInputSplit) instantiatedSplit;
+				// TODO: smth here?
+				System.out.println("splitaddr="+sipSplit.getAddr());
+				System.out.println("splitport="+sipSplit.getPort());
+			}
+			
+			
 			
 			RecordReader rawIn =                  // open input
 				job.getInputFormat().getRecordReader(instantiatedSplit, job, reporter);
@@ -301,12 +327,6 @@ public class MapTask extends Task {
 				job.set("map.input.file", fileSplit.getPath().toString());
 				job.setLong("map.input.start", fileSplit.getStart());
 				job.setLong("map.input.length", fileSplit.getLength());
-			}
-
-			// may need to do instanceof StreamInputSplit here and set job configs?
-			if (instantiatedSplit instanceof StreamInputSplit) {
-				StreamInputSplit streamSplit = (StreamInputSplit) instantiatedSplit;
-				// job.set("map.input.file", streamSplit.getPath().toString());
 			}
 
 			RecordReader rawIn =                  // open input

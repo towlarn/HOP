@@ -150,9 +150,8 @@ public class WordCountStream extends Configured implements Tool {
       return printUsage();
     }
     
-    int num_mappers = other_args.get(0).split(";").length;
-    
     /* ******* THESE ARE REQUIRED ******* */
+    int num_mappers = other_args.get(0).split(";").length;
     conf.setInputFormat(StreamInputFormat.class);
     // This overrides the -m option, but is needed
     conf.setNumMapTasks(num_mappers);

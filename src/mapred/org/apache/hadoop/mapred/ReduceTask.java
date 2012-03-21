@@ -74,7 +74,7 @@ public class ReduceTask extends Task {
 		public void run() {
 			Set<TaskID> finishedMapTasks = new HashSet<TaskID>();
 			Set<TaskAttemptID>  mapTasks = new HashSet<TaskAttemptID>();
-
+			System.err.println("Reduce Task: "+getTaskID() + " begin running (no params)");
 			int eid = 0;
 			while (!isInterrupted() && finishedMapTasks.size() < getNumberOfInputs()) {
 				try {
@@ -263,6 +263,7 @@ public class ReduceTask extends Task {
 	@SuppressWarnings("unchecked")
 	public void run(JobConf job, final TaskUmbilicalProtocol umbilical, final BufferUmbilicalProtocol bufferUmbilical)
 	throws IOException {
+		System.err.println("Reduce Task: "+getTaskID() + " begin running (with params)");
 		// start thread that will handle communication with parent
 		startCommunicationThread(umbilical);
 
@@ -321,7 +322,9 @@ public class ReduceTask extends Task {
 		
 		setPhase(TaskStatus.Phase.SHUFFLE); 
 		stream = job.getBoolean("mapred.stream", false) ||
-				 job.getBoolean("mapred.job.monitor", false);
+				 job.getBoolean("mapred.job.monitor", false) || 
+				 job.getBoolean("mapred.streaming.window", false);
+		System.err.println("In run method, stream="+stream);
 		if (stream) {
 			stream(job, inputCollector, sink, reporter, bufferUmbilical);
 		}
@@ -329,7 +332,7 @@ public class ReduceTask extends Task {
 			copy(job, inputCollector, sink, reporter, bufferUmbilical);
 		}
 		fetcher.interrupt();
-		
+		System.err.println("In run method, done with stream or copy");
 		long begin = System.currentTimeMillis();
 		try {
 			setPhase(TaskStatus.Phase.REDUCE); 
@@ -346,10 +349,16 @@ public class ReduceTask extends Task {
 	
 	protected void stream(JobConf job, InputCollector inputCollector,
 			BufferExchangeSink sink, Reporter reporter, BufferUmbilicalProtocol umbilical) throws IOException {
-		int window = job.getInt("mapred.reduce.window", 1000);
+		int window = job.getInt("mapred.reduce.window", 1);
 		//ivan: 
-		int slidingTime = job.getInt("mapred.reduce.slidingTime", 1000);
+		int slidingTime = job.getInt("mapred.reduce.slidingtime", 1);
 		int maxBucketSize = window/slidingTime; // ivan: assume window size is product of slidingTime
+		
+		// convert from milliseconds to seconds
+		window *= 1000;
+		slidingTime *= 1000;
+		
+		System.err.println("Reduce Task: "+getTaskID() + " running stream method");
 		
 		long starttime = System.currentTimeMillis();
 		synchronized (this) {
@@ -359,9 +368,11 @@ public class ReduceTask extends Task {
 			while(!sink.complete()) {
 				setProgressFlag();
 				
-				if (System.currentTimeMillis() > (windowTimeStamp + window)) {
-					LOG.info("ReduceTask: " + getTaskID() + " perform stream window snapshot. window = " + 
-							 (System.currentTimeMillis() - windowTimeStamp) + "ms.");
+				if (System.currentTimeMillis() > (windowTimeStamp + slidingTime)) {
+					String str = "ReduceTask: " + getTaskID() + " perform stream window snapshot. window = " + 
+					 (System.currentTimeMillis() - windowTimeStamp) + "ms.";
+					LOG.info(str);
+					System.err.println(str);
 					windowTimeStamp = System.currentTimeMillis();
 					reduce(job, reporter, inputCollector, umbilical, sink.getProgress(), null);
 					//inputCollector.free(); // Free current data

@@ -11,7 +11,9 @@ import java.net.SocketTimeoutException;
 import java.sql.SQLException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -24,11 +26,11 @@ public class StreamerServer {
 
 	public static final int QUEUE_SIZE = 10 * 100;
 	public static final long WAIT_THRESHOLD = 1000; // in milliseconds
-	public static final double SPEEDUP_FACTOR = 3.0;
+	public static double SPEEDUP_FACTOR = 5.0;
 	
 	private int port;
 	private int rows;
-	private int SOCKET_TIMEOUT = 3 * 60 * 1000;
+	private int SOCKET_TIMEOUT = 30 * 60 * 1000;
 	
 	private ThreadPoolExecutor tp;
 	private ServerSocket ss;
@@ -164,6 +166,7 @@ public class StreamerServer {
 							setInitialTimes(time, System.currentTimeMillis());
 							timeSet = true;
 						}
+						System.out.println(data);
 						out.println(data);
 						i++;
 					}
@@ -215,12 +218,32 @@ public class StreamerServer {
 	}
 
 	public static void main(String args[]) throws SQLException, IOException {
-
-		if (args.length != 3) { printUsageAndQuit(); }
 		
-		int port = Integer.parseInt(args[0]);
-		int initial_offset = Integer.parseInt(args[1]);
-		int num_rows_per_thread = Integer.parseInt(args[2]);
+		List<String> other_args = new ArrayList<String>();
+		for(int i=0; i < args.length; ++i) {
+			try {
+				if ("-s".equals(args[i])) {
+					double speedup_factor = Double.parseDouble(args[++i]);
+					SPEEDUP_FACTOR = speedup_factor;
+				} else {
+					other_args.add(args[i]);
+				}
+			} catch (NumberFormatException except) {
+				System.out.println("ERROR: Integer expected instead of " + args[i]);
+				printUsageAndQuit();
+			} catch (ArrayIndexOutOfBoundsException except) {
+				System.out.println("ERROR: Required parameter missing from " +
+						args[i-1]);
+				printUsageAndQuit();
+			}
+		}
+
+		
+		if (other_args.size() != 3) { printUsageAndQuit(); }
+		
+		int port = Integer.parseInt(other_args.get(0));
+		int initial_offset = Integer.parseInt(other_args.get(1));
+		int num_rows_per_thread = Integer.parseInt(other_args.get(2));
 		
 		StreamerServer ss = new StreamerServer(port, initial_offset, num_rows_per_thread);
 		ss.run();
@@ -232,7 +255,7 @@ public class StreamerServer {
 
 
 	public static void printUsageAndQuit(){
-		System.out.println("Usage: DataStreamer  port  initial_offset  rows_per_thread");
+		System.out.println("Usage: DataStreamer [-s speedup_factor] <port> <initial_offset> <rows_per_thread>");
 		System.exit(0);
 	}
 }

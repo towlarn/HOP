@@ -14,7 +14,6 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
-import org.apache.hadoop.mapred.FileInputFormat;
 import org.apache.hadoop.mapred.FileOutputFormat;
 import org.apache.hadoop.mapred.JobClient;
 import org.apache.hadoop.mapred.JobConf;
@@ -24,8 +23,9 @@ import org.apache.hadoop.mapred.OutputCollector;
 import org.apache.hadoop.mapred.Reducer;
 import org.apache.hadoop.mapred.Reporter;
 import org.apache.hadoop.mapred.TaskTracker;
-import org.apache.hadoop.mapred.TextInputFormat;
+import org.apache.hadoop.mapred.buffer.impl.JOutputBuffer;
 import org.apache.hadoop.mapred.lib.IdentityReducer;
+import org.apache.hadoop.mapred.lib.stream.StreamInputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
@@ -56,6 +56,15 @@ public class TwitterCount extends Configured implements Tool {
 		private Text word = new Text();
 
 		private boolean firstLine = false;
+		
+		public void blockForce(OutputCollector o) {
+			JOutputBuffer jb = (JOutputBuffer) o;
+			try {
+				jb.force();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
 
 		@Override
 		public void map(LongWritable key, Text value,
@@ -68,6 +77,7 @@ public class TwitterCount extends Configured implements Tool {
 			LOG.info("Tokenized string is "+tok);
 			word.set(tok);
 			output.collect(word, one);
+			blockForce(output);
 		}
 	}
 
@@ -92,7 +102,7 @@ public class TwitterCount extends Configured implements Tool {
 	}
 
 	static int printUsage() {
-		System.out.println("twittercount [-s interval] [-S <sort>] [-p <pipeline>] [-m maps] [-r reduces] input output");
+		System.out.println("twittercount [-s interval] [-S <sort>] [-p <pipeline>] [-m maps] [-r reduces] [-w <window> <sliding_window>] input output");
 		ToolRunner.printGenericCommandUsage(System.out);
 		return -1;
 	}
@@ -113,6 +123,7 @@ public class TwitterCount extends Configured implements Tool {
 		conf.setOutputValueClass(IntWritable.class);
 
 		//conf.setInputFormat(TextInputFormat.class);
+		conf.setNumReduceTasks(1);
 		
 		boolean sort = false;
 		List<String> other_args = new ArrayList<String>();
@@ -129,6 +140,17 @@ public class TwitterCount extends Configured implements Tool {
 					sort = true;
 				} else if ("-r".equals(args[i])) {
 					conf.setNumReduceTasks(Integer.parseInt(args[++i]));
+				} else if ("-w".equals(args[i])) {
+					System.out.println("Begin setting window properties");
+					//conf.setBoolean("mapred.job.monitor", true);  // or mapred.stream ??
+					//conf.setBoolean("mapred.stream", true);
+					conf.setBoolean("mapred.streaming.window", true);
+					int windowsize = Integer.parseInt(args[++i]);
+					conf.setInt("mapred.reduce.window", windowsize);
+					int slidingtime = Integer.parseInt(args[++i]);
+					conf.setInt("mapred.reduce.slidingtime", slidingtime);
+					conf.setBoolean("mapred.map.pipeline", true);
+					System.out.println("Done setting all window properties -- "+windowsize + " " + slidingtime);
 				} else {
 					other_args.add(args[i]);
 				}
@@ -147,7 +169,16 @@ public class TwitterCount extends Configured implements Tool {
 					other_args.size() + " instead of 2.");
 			return printUsage();
 		}
-		FileInputFormat.setInputPaths(conf, other_args.get(0));
+		
+		/* ******* THESE ARE REQUIRED ******* */
+	    int num_mappers = other_args.get(0).split(";").length;
+	    conf.setInputFormat(StreamInputFormat.class);
+	    // This overrides the -m option, but is needed
+	    conf.setNumMapTasks(num_mappers);
+	    conf.setBoolean("mapred.map.pipeline", true);
+		
+		// NOTE: StreamInputFormat
+		StreamInputFormat.setInputStreams(conf, other_args.get(0));
 		FileOutputFormat.setOutputPath(conf, new Path(other_args.get(1)));
 
 		conf.setMapperClass(MapClass.class);        
@@ -155,9 +186,13 @@ public class TwitterCount extends Configured implements Tool {
 			conf.setReducerClass(IdentityReducer.class);
 		}
 		else {
-			conf.setCombinerClass(Reduce.class);
+			/* DO NOT USE A COMBINER */
+			//conf.setCombinerClass(Reduce.class);
 			conf.setReducerClass(Reduce.class);
 		}
+		
+		System.out.println("Running TwitterCount on input: "+other_args.get(0));
+	    System.out.println("output: "+other_args.get(1));
 
 		JobClient.runJob(conf);
 		return 0;
