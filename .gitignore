@@ -11,6 +11,9 @@ conf/*
 contrib/*
 docs/*
 src/docs/*
+input/*
+lib/*
+logs/*
 hadoop-hop-0.2-ant.jar
 hadoop-hop-0.2-core.jar
 hadoop-hop-0.2-examples.jar
