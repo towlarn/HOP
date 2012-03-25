@@ -33,20 +33,27 @@ import java.util.regex.Pattern;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
+import org.apache.hadoop.examples.SleepJob.EmptySplit;
+import org.apache.hadoop.examples.SleepJob.SleepInputFormat;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapred.FileInputFormat;
 import org.apache.hadoop.mapred.FileOutputFormat;
+import org.apache.hadoop.mapred.InputFormat;
+import org.apache.hadoop.mapred.InputSplit;
 import org.apache.hadoop.mapred.JobClient;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.MapReduceBase;
 import org.apache.hadoop.mapred.Mapper;
 import org.apache.hadoop.mapred.OutputCollector;
+import org.apache.hadoop.mapred.RealTimeRecordReader;
+import org.apache.hadoop.mapred.RecordReader;
 import org.apache.hadoop.mapred.Reducer;
 import org.apache.hadoop.mapred.Reporter;
 import org.apache.hadoop.mapred.buffer.impl.JOutputBuffer;
+import org.apache.hadoop.mapred.monitor.MapMonitorRunner;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
@@ -77,6 +84,26 @@ public class CQ extends Configured implements Tool {
 			this.offset = o; this.name = n;
 		}
 	}
+	
+	public static class CQInputFormat extends Configured implements
+			InputFormat<LongWritable, LongWritable> {
+		public InputSplit[] getSplits(JobConf conf, int numSplits) {
+			InputSplit[] ret = new InputSplit[numSplits];
+			for (int i = 0; i < numSplits; ++i) {
+				ret[i] = new EmptySplit();
+			}
+			return ret;
+		}
+
+		public RecordReader<LongWritable, LongWritable> getRecordReader(
+				InputSplit ignored, JobConf conf, Reporter reporter)
+				throws IOException {
+			return new RealTimeRecordReader();
+
+			};
+		}
+
+	
 
 	public static class SystemStats {
 		public int getInt(SystemStatEntry e) {
@@ -190,8 +217,10 @@ public class CQ extends Configured implements Tool {
 
 
 	public static class MapClass extends MapReduceBase
-	implements Mapper<LongWritable, Text, Text, Text> {
+	implements Mapper<LongWritable, LongWritable, Text, Text> {
 		private Text word = new Text();
+		private long seq;
+		
 		public void sleep(int s) {
 			try {
 				Thread.sleep(s);
@@ -203,7 +232,10 @@ public class CQ extends Configured implements Tool {
 		public void blockForce(OutputCollector o) {
 			JOutputBuffer jb = (JOutputBuffer) o;
 			try {
-				jb.force();
+//				jb.force();
+				//TODO LC
+				jb.stream(seq++, true);
+				
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -218,7 +250,7 @@ public class CQ extends Configured implements Tool {
 				throw new RuntimeException(e);
 			}
 		}
-		public void map(LongWritable key, Text value,
+		public void map(LongWritable key, LongWritable value,
 				OutputCollector<Text, Text> output,
 				Reporter reporter) throws IOException {
 			java.net.InetAddress localMachine = java.net.InetAddress.getLocalHost();
@@ -232,7 +264,10 @@ public class CQ extends Configured implements Tool {
 			int pin = 0;
 			int pout = 0;
 			int iow = 0;
-			while (true) {
+			
+			seq = 0;
+			
+			while (true) {				
 				SystemStats stat = new SystemStats();
 				word.set(hn);
 				// I was having a lot of trouble with ArrayWritable...
@@ -259,13 +294,15 @@ public class CQ extends Configured implements Tool {
 				Text v = new Text(((u-su) % 100) + "," + ((s-ss)%100) + "," + (j-st) + "," + (pagein-pin) + "," + (pageout-pout) + "," + (sir)  + "," + (sor) + "," + stat.getFloat(SystemStatEntry.NET) + "," + (iowaits - iow) + "," + System.currentTimeMillis());
 				output.collect(word, v);
 				blockForce(output);
+				
 				System.err.println("M load: " + l );
 
 				System.err.println("M readings: " + (u-su) + "," + (s-ss) + "," + (j-st));
 				System.err.println("ie, "+u+","+su+" : "+j+","+st);
 				su = u; ss = s; st = j; in = swappedin; out = swappedout; pin = pagein; pout = pageout; iow = iowaits;
 				reporter.progress();
-				sleep(4000);
+				
+				sleep(5000);
 			}
 
 
@@ -513,7 +550,10 @@ public class CQ extends Configured implements Tool {
 		// the keys are words (strings)
 		conf.setOutputKeyClass(Text.class);
 		// the values are counts (ints)
-		conf.setOutputValueClass(Text.class);
+		conf.setOutputValueClass(IntWritable.class);
+		
+		conf.setMapOutputKeyClass(Text.class);
+		conf.setMapOutputValueClass(Text.class);
 
 		conf.setMapperClass(MapClass.class);
 		/* DO NOT USE A COMBINER
@@ -524,7 +564,6 @@ public class CQ extends Configured implements Tool {
 		conf.setNumReduceTasks(1);
 		//conf.setNumMapTasks(4);
 
-		conf.setBoolean("mapred.job.monitor", true);
 
 		List<String> other_args = new ArrayList<String>();
 		for(int i=0; i < args.length; ++i) {
@@ -558,7 +597,10 @@ public class CQ extends Configured implements Tool {
 		FileOutputFormat.setOutputPath(conf, new Path(other_args.get(1)));
 
 		conf.setBoolean("mapred.job.monitor", true);
-		JobClient.runJob(conf);
+	    conf.setInputFormat(CQInputFormat.class);
+//	    conf.setMapRunnerClass(MapMonitorRunner.class);
+		
+	    JobClient.runJob(conf);
 		return 0;
 	}
 
