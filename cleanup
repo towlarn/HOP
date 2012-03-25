@@ -1,0 +1,8 @@
+#!/bin/sh
+
+rm -r logs/*
+rm -r /tmp/hadoop-$USERNAME
+rm -r /tmp/hadoop-$USERNAME*
+rm -r output
+bin/hadoop fs -rmr output
+bin/stop-all.sh

@@ -1,0 +1,6 @@
+#!/bin/sh
+
+./cleanup
+rm -r /tmp/hadoop*
+./clean-start
+bin/hadoop jar build/hadoop-hop-0.2-examples.jar twittercount -w 10 5 127.0.0.1,6000 output
