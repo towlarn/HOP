@@ -89,7 +89,7 @@ public class StreamerServer {
 				String input;
 				try {
 					while((input = in.readLine()) != null){
-						if (input.equals("shutdown")){
+						if (input.equals("shutdown") || input.equals("exit") || input.equals("quit")){
 							isShutdown = true;
 							ss.close();
 							break;

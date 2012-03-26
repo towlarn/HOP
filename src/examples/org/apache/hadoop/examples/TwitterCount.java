@@ -32,12 +32,8 @@ import org.apache.hadoop.util.ToolRunner;
 /**
  * This is based on WordCount.java example
  * 
- * This is an example Hadoop Map/Reduce application.
- * It reads the text input files, breaks each line into words
- * and counts them. The output is a locally sorted list of words and the 
- * count of how often they occurred.
  *
- * To run: bin/hadoop jar build/hadoop-examples.jar wordcount
+ * To run: bin/hadoop jar build/hadoop-examples.jar twittercount
  *            [-s] [-m <i>maps</i>] [-r <i>reduces</i>] <i>in-dir</i> <i>out-dir</i> 
  */
 public class TwitterCount extends Configured implements Tool {
