@@ -248,7 +248,7 @@ public class MapTask extends Task {
 			JOutputBuffer buffer = new JOutputBuffer(bufferUmbilical, this, job, 
 					reporter, getProgress(), false, keyClass, valClass, codecClass);
 			
-			
+			/*
 			// reinstantiate the split
 			try {
 				instantiatedSplit = (InputSplit) 
@@ -270,7 +270,7 @@ public class MapTask extends Task {
 				System.out.println("splitaddr="+sipSplit.getAddr());
 				System.out.println("splitport="+sipSplit.getPort());
 			}
-			
+			*/
 			
 			
 			RecordReader rawIn =                  // open input

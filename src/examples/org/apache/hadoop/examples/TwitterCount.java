@@ -32,180 +32,186 @@ import org.apache.hadoop.util.ToolRunner;
 /**
  * This is based on WordCount.java example
  * 
- *
- * To run: bin/hadoop jar build/hadoop-examples.jar twittercount
- *            [-s] [-m <i>maps</i>] [-r <i>reduces</i>] <i>in-dir</i> <i>out-dir</i> 
+ * 
+ * To run: bin/hadoop jar build/hadoop-examples.jar twittercount [-s] [-m
+ * <i>maps</i>] [-r <i>reduces</i>] <i>in-dir</i> <i>out-dir</i>
  */
 public class TwitterCount extends Configured implements Tool {
-	
-	public static final Log LOG = LogFactory.getLog(TaskTracker.class);
 
-	/**
-	 * Counts the words in each line.
-	 * For each line of input, break the line into words and emit them as
-	 * (<b>word</b>, <b>1</b>).
-	 */
-	public static class MapClass extends MapReduceBase
-	implements Mapper<LongWritable, Text, Text, IntWritable> {
+  public static final Log LOG = LogFactory.getLog(TaskTracker.class);
 
-		private final static IntWritable one = new IntWritable(1);
-		private Text word = new Text();
-		private long seq;
+  /**
+   * Counts the words in each line. For each line of input, break the line into
+   * words and emit them as (<b>word</b>, <b>1</b>).
+   */
+  public static class MapClass extends MapReduceBase implements
+      Mapper<LongWritable, Text, Text, IntWritable> {
 
-		private boolean firstLine = false;
-		
-		public MapClass(){
-			super();
-			seq = 0;
-		}
-		
-		public void blockForce(OutputCollector o) {
-			JOutputBuffer jb = (JOutputBuffer) o;
-			try {
-			  //jb.force();
-				jb.stream(seq, true);
-				seq++;
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
+    private final static IntWritable one = new IntWritable(1);
+    private Text word = new Text();
+    private long seq;
 
-		@Override
-		public void map(LongWritable key, Text value,
-				OutputCollector<Text, IntWritable> output,
-				Reporter reporter) throws IOException {
-			String line = value.toString();
-			StringTokenizer itr = new StringTokenizer(line);
-			String tok = itr.nextToken();
-			System.out.println("Tokenized string is "+tok);
-			LOG.info("Tokenized string is "+tok);
-			word.set(tok);
-			output.collect(word, one);
-			blockForce(output);
-		}
-	}
+    private boolean firstLine = false;
 
-	/**
-	 * A reducer class that just emits the sum of the input values.
-	 */
-	public static class Reduce extends MapReduceBase
-	implements Reducer<Text, IntWritable, Text, IntWritable> {
-		
-		private Text word = new Text();
+    public MapClass() {
+      super();
+      seq = 0;
+    }
 
-		public void reduce(Text key, Iterator<IntWritable> values,
-				OutputCollector<Text, IntWritable> output, 
-				Reporter reporter) throws IOException {
-			int sum = 0;
-			while (values.hasNext()) {
-				sum += values.next().get();
-			}
-			word.set(key.toString());
-			output.collect(word, new IntWritable(sum));
-		}
-	}
+    public void blockForce(OutputCollector o) {
+      JOutputBuffer jb = (JOutputBuffer) o;
+      try {
+        // jb.force();
+        jb.stream(seq, true);
+        seq++;
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    }
 
-	static int printUsage() {
-		System.out.println("twittercount [-s interval] [-S <sort>] [-p <pipeline>] [-m maps] [-r reduces] [-w <window> <sliding_window>] input output");
-		ToolRunner.printGenericCommandUsage(System.out);
-		return -1;
-	}
+    @Override
+    public void map(LongWritable key, Text value,
+        OutputCollector<Text, IntWritable> output, Reporter reporter)
+        throws IOException {
+      String line = value.toString();
+      StringTokenizer itr = new StringTokenizer(line);
+      String tok = itr.nextToken();
+      System.out.println("Tokenized string is " + tok);
+      LOG.info("Tokenized string is " + tok);
+      word.set(tok);
+      output.collect(word, one);
+      blockForce(output);
+    }
+  }
 
-	/**
-	 * The main driver for word count map/reduce program.
-	 * Invoke this method to submit the map/reduce job.
-	 * @throws IOException When there is communication problems with the 
-	 *                     job tracker.
-	 */
-	public int run(String[] args) throws Exception {
-		JobConf conf = new JobConf(getConf(), TwitterCount.class);
-		conf.setJobName("twittercount");
+  /**
+   * A reducer class that just emits the sum of the input values.
+   */
+  public static class Reduce extends MapReduceBase implements
+      Reducer<Text, IntWritable, Text, IntWritable> {
 
-		// the keys are words (strings)
-		conf.setOutputKeyClass(Text.class);
-		// the values are counts (ints)
-		conf.setOutputValueClass(IntWritable.class);
+    private Text word = new Text();
 
-		//conf.setInputFormat(TextInputFormat.class);
-		conf.setNumReduceTasks(1);
-		
-		boolean sort = false;
-		List<String> other_args = new ArrayList<String>();
-		for(int i=0; i < args.length; ++i) {
-			try {
-				if ("-s".equals(args[i])) {
-					conf.setFloat("mapred.snapshot.frequency", Float.parseFloat(args[++i]));
-					conf.setBoolean("mapred.map.pipeline", true);
-				} else if ("-p".equals(args[i])) {
-					conf.setBoolean("mapred.map.pipeline", true);
-				} else if ("-m".equals(args[i])) {
-					conf.setNumMapTasks(Integer.parseInt(args[++i]));
-				} else if ("-S".equals(args[i])) {
-					sort = true;
-				} else if ("-r".equals(args[i])) {
-					conf.setNumReduceTasks(Integer.parseInt(args[++i]));
-				} else if ("-w".equals(args[i])) {
-					System.out.println("Begin setting window properties");
-					//conf.setBoolean("mapred.job.monitor", true);  // or mapred.stream ??
-					//conf.setBoolean("mapred.stream", true);
-					conf.setBoolean("mapred.streaming.window", true);
-					int windowsize = Integer.parseInt(args[++i]);
-					conf.setInt("mapred.reduce.window", windowsize);
-					int slidingtime = Integer.parseInt(args[++i]);
-					conf.setInt("mapred.reduce.slidingtime", slidingtime);
-					//conf.setBoolean("mapred.map.pipeline", true);
-					System.out.println("Done setting all window properties -- "+windowsize + " " + slidingtime);
-				} else {
-					other_args.add(args[i]);
-				}
-			} catch (NumberFormatException except) {
-				System.out.println("ERROR: Integer expected instead of " + args[i]);
-				return printUsage();
-			} catch (ArrayIndexOutOfBoundsException except) {
-				System.out.println("ERROR: Required parameter missing from " +
-						args[i-1]);
-				return printUsage();
-			}
-		}
-		// Make sure there are exactly 2 parameters left.
-		if (other_args.size() != 2) {
-			System.out.println("ERROR: Wrong number of parameters: " +
-					other_args.size() + " instead of 2.");
-			return printUsage();
-		}
-		
-		/* ******* THESE ARE REQUIRED ******* */
-	    int num_mappers = other_args.get(0).split(";").length;
-	    conf.setInputFormat(StreamInputFormat.class);
-	    // This overrides the -m option, but is needed
-	    conf.setNumMapTasks(num_mappers);
-	    //conf.setBoolean("mapred.map.pipeline", true);
-		
-		// NOTE: StreamInputFormat
-		StreamInputFormat.setInputStreams(conf, other_args.get(0));
-		FileOutputFormat.setOutputPath(conf, new Path(other_args.get(1)));
+    public void reduce(Text key, Iterator<IntWritable> values,
+        OutputCollector<Text, IntWritable> output, Reporter reporter)
+        throws IOException {
+      int sum = 0;
+      while (values.hasNext()) {
+        sum += values.next().get();
+      }
+      word.set(key.toString());
+      output.collect(word, new IntWritable(sum));
+    }
+  }
 
-		conf.setMapperClass(MapClass.class);        
-		if (sort) {
-			conf.setReducerClass(IdentityReducer.class);
-		}
-		else {
-			/* DO NOT USE A COMBINER */
-			//conf.setCombinerClass(Reduce.class);
-			conf.setReducerClass(Reduce.class);
-		}
-		
-		System.out.println("Running TwitterCount on input: "+other_args.get(0));
-	    System.out.println("output: "+other_args.get(1));
+  static int printUsage() {
+    System.out
+        .println("twittercount [-s interval] [-S <sort>] [-p <pipeline>] [-m maps] [-r reduces] [-w <window> <sliding_window>] input output");
+    ToolRunner.printGenericCommandUsage(System.out);
+    return -1;
+  }
 
-		JobClient.runJob(conf);
-		return 0;
-	}
+  /**
+   * The main driver for word count map/reduce program. Invoke this method to
+   * submit the map/reduce job.
+   * 
+   * @throws IOException
+   *           When there is communication problems with the job tracker.
+   */
+  public int run(String[] args) throws Exception {
+    JobConf conf = new JobConf(getConf(), TwitterCount.class);
+    conf.setJobName("twittercount");
 
+    // the keys are words (strings)
+    conf.setOutputKeyClass(Text.class);
+    // the values are counts (ints)
+    conf.setOutputValueClass(IntWritable.class);
 
-	public static void main(String[] args) throws Exception {
-		int res = ToolRunner.run(new Configuration(), new TwitterCount(), args);
-		System.exit(res);
-	}
+    // conf.setInputFormat(TextInputFormat.class);
+    conf.setNumReduceTasks(1);
+
+    boolean sort = false;
+    List<String> other_args = new ArrayList<String>();
+    for (int i = 0; i < args.length; ++i) {
+      try {
+        if ("-s".equals(args[i])) {
+          conf.setFloat("mapred.snapshot.frequency", Float
+              .parseFloat(args[++i]));
+          conf.setBoolean("mapred.map.pipeline", true);
+        } else if ("-p".equals(args[i])) {
+          conf.setBoolean("mapred.map.pipeline", true);
+        } else if ("-m".equals(args[i])) {
+          conf.setNumMapTasks(Integer.parseInt(args[++i]));
+        } else if ("-S".equals(args[i])) {
+          sort = true;
+        } else if ("-r".equals(args[i])) {
+          conf.setNumReduceTasks(Integer.parseInt(args[++i]));
+        } else if ("-w".equals(args[i])) {
+          System.out.println("Begin setting window properties");
+          
+          // not these
+          conf.setBoolean("mapred.job.monitor", true); // or mapred.stream ??
+          //conf.setBoolean("mapred.stream", true);
+          
+         
+          //conf.setBoolean("mapred.streaming.window", true);
+          int windowsize = Integer.parseInt(args[++i]);
+          conf.setInt("mapred.reduce.window", windowsize);
+          int slidingtime = Integer.parseInt(args[++i]);
+          conf.setInt("mapred.reduce.slidingtime", slidingtime);
+          // conf.setBoolean("mapred.map.pipeline", true);
+          
+          System.out.println("Done setting all window properties -- "
+              + windowsize + " " + slidingtime);
+        } else {
+          other_args.add(args[i]);
+        }
+      } catch (NumberFormatException except) {
+        System.out.println("ERROR: Integer expected instead of " + args[i]);
+        return printUsage();
+      } catch (ArrayIndexOutOfBoundsException except) {
+        System.out.println("ERROR: Required parameter missing from "
+            + args[i - 1]);
+        return printUsage();
+      }
+    }
+    // Make sure there are exactly 2 parameters left.
+    if (other_args.size() != 2) {
+      System.out.println("ERROR: Wrong number of parameters: "
+          + other_args.size() + " instead of 2.");
+      return printUsage();
+    }
+
+    /*  ******* THESE ARE REQUIRED ******* */
+    int num_mappers = other_args.get(0).split(";").length;
+    conf.setInputFormat(StreamInputFormat.class);
+    // This overrides the -m option, but is needed
+    conf.setNumMapTasks(num_mappers);
+    conf.setBoolean("mapred.map.pipeline", true);
+
+    // NOTE: StreamInputFormat
+    StreamInputFormat.setInputStreams(conf, other_args.get(0));
+    FileOutputFormat.setOutputPath(conf, new Path(other_args.get(1)));
+
+    conf.setMapperClass(MapClass.class);
+    if (sort) {
+      conf.setReducerClass(IdentityReducer.class);
+    } else {
+      /* DO NOT USE A COMBINER */
+      // conf.setCombinerClass(Reduce.class);
+      conf.setReducerClass(Reduce.class);
+    }
+
+    System.out.println("Running TwitterCount on input: " + other_args.get(0));
+    System.out.println("output: " + other_args.get(1));
+
+    JobClient.runJob(conf);
+    return 0;
+  }
+
+  public static void main(String[] args) throws Exception {
+    int res = ToolRunner.run(new Configuration(), new TwitterCount(), args);
+    System.exit(res);
+  }
 
 }
