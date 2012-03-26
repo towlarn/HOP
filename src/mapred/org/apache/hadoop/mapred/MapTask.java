@@ -65,6 +65,7 @@ import org.apache.hadoop.mapred.buffer.impl.Buffer;
 import org.apache.hadoop.mapred.buffer.impl.JOutputBuffer;
 import org.apache.hadoop.mapred.buffer.net.BufferRequest;
 import org.apache.hadoop.mapred.buffer.net.BufferExchangeSink;
+import org.apache.hadoop.mapred.lib.stream.StreamInputFormat;
 import org.apache.hadoop.mapred.lib.stream.StreamInputSplit;
 import org.apache.hadoop.util.IndexedSortable;
 import org.apache.hadoop.util.IndexedSorter;
@@ -230,9 +231,10 @@ public class MapTask extends Task {
 		int numReduceTasks = conf.getNumReduceTasks();
 		LOG.info("numReduceTasks: " + numReduceTasks);
 		
+		boolean streamingWindow = job.getBoolean("mapred.streaming.window", false);
 		boolean stream = job.getBoolean("mapred.stream", false) ||
 						 job.getBoolean("mapred.job.monitor", false) || 
-						 job.getBoolean("mapred.streaming.window", false);
+						 streamingWindow;
 		if (stream) {
 			Class mapCombiner = job.getClass("mapred.map.combiner.class", null);
 			if (mapCombiner != null) {
@@ -248,9 +250,11 @@ public class MapTask extends Task {
 			JOutputBuffer buffer = new JOutputBuffer(bufferUmbilical, this, job, 
 					reporter, getProgress(), false, keyClass, valClass, codecClass);
 			
-			/*
 			// reinstantiate the split
 			try {
+			  if (streamingWindow){
+			    splitClass = StreamInputSplit.class.getName();
+			  }
 				instantiatedSplit = (InputSplit) 
 				ReflectionUtils.newInstance(job.getClassByName(splitClass), job);
 			} catch (ClassNotFoundException exp) {
@@ -270,7 +274,6 @@ public class MapTask extends Task {
 				System.out.println("splitaddr="+sipSplit.getAddr());
 				System.out.println("splitport="+sipSplit.getPort());
 			}
-			*/
 			
 			
 			RecordReader rawIn =                  // open input

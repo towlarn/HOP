@@ -37,6 +37,7 @@ import org.apache.hadoop.io.WritableFactories;
 import org.apache.hadoop.io.WritableFactory;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.DefaultCodec;
+import org.apache.hadoop.mapred.TextOutputFormat.LineRecordWriter;
 import org.apache.hadoop.mapred.buffer.BufferUmbilicalProtocol;
 import org.apache.hadoop.mapred.buffer.OutputFile;
 import org.apache.hadoop.mapred.buffer.impl.Buffer;
@@ -172,6 +173,9 @@ public class ReduceTask extends Task {
 	
 	private boolean reducePipeline = false;
 	
+	// thanat: Streaming Window mode
+	private boolean streamingWindow = false;
+	
 	private float   snapshotThreshold = 1f;
 	private float   snapshotFreq    = 1f;
 	private boolean inputSnapshots = false;
@@ -299,6 +303,7 @@ public class ReduceTask extends Task {
 		}
 
 		reducePipeline = job.getBoolean("mapred.reduce.pipeline", false);
+		streamingWindow = job.getBoolean("mapred.streaming.window", false);
 		snapshotFreq   = job.getFloat("mapred.snapshot.frequency", 1f);
 		snapshotThreshold = snapshotFreq;
 		inputSnapshots  = job.getBoolean("mapred.job.input.snapshots", false);
@@ -323,7 +328,7 @@ public class ReduceTask extends Task {
 		setPhase(TaskStatus.Phase.SHUFFLE); 
 		stream = job.getBoolean("mapred.stream", false) ||
 				 job.getBoolean("mapred.job.monitor", false) || 
-				 job.getBoolean("mapred.streaming.window", false);
+				 streamingWindow;
 		System.err.println("In run method, stream="+stream);
 		if (stream) {
 			stream(job, inputCollector, sink, reporter, bufferUmbilical);
@@ -496,6 +501,11 @@ public class ReduceTask extends Task {
 					reduceOutputCounter.increment(1);
 					// indicate that progress update needs to be sent
 					reporter.progress();
+					if (streamingWindow){
+					  LineRecordWriter lrw = (LineRecordWriter) out;
+					  System.err.println("Flushing lrw. Contents="+lrw.toString());
+					  lrw.out.flush();
+					}
 				}
 			};
 			LOG.debug("ReduceTask: create final output file " + filename);

@@ -434,7 +434,7 @@ class JobInProgress {
     Path sysDir = new Path(this.jobtracker.getSystemDir());
     FileSystem fs = sysDir.getFileSystem(conf);
     JobClient.RawSplit[] splits = null;
-    if (this.pipeline != null || this.monitor) {
+    if (this.pipeline != null || this.monitor && !conf.getBoolean("mapred.streaming.window", false)) {
     	numMapTasks = this.monitor ? jobtracker.getNumberOfUniqueHosts() : conf.getNumMapTasks();
     	splits = new JobClient.RawSplit[numMapTasks];
     	for (int i = 0; i < numMapTasks; i++) {

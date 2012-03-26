@@ -8,6 +8,7 @@ import java.io.OutputStream;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
@@ -16,6 +17,7 @@ import java.util.List;
 import java.util.Queue;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.UUID;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -119,15 +121,46 @@ public class JInputBuffer<K extends Object, V extends Object> extends
 
 	/** Describes an input file; could either be on disk or in-memory. */
 	private class JInput {
-		final TaskID taskid;
+
+    final TaskID taskid;
 
 		Path file;
 
 		byte[] data;
 		boolean inMemory;
 		long compressedSize;
+		
+		final UUID ID;
+		
+    @Override
+    public int hashCode() {
+      final int prime = 31;
+      int result = 1;
+      result = prime * result + getOuterType().hashCode();
+      result = prime * result + ((ID == null) ? 0 : ID.hashCode());
+      return result;
+    }
 
-		public JInput(TaskID taskid, Path file, long compressedLength) {
+    @Override
+    public boolean equals(Object obj) {
+      if (this == obj)
+        return true;
+      if (obj == null)
+        return false;
+      if (getClass() != obj.getClass())
+        return false;
+      JInput other = (JInput) obj;
+      if (!getOuterType().equals(other.getOuterType()))
+        return false;
+      if (ID == null) {
+        if (other.ID != null)
+          return false;
+      } else if (!ID.equals(other.ID))
+        return false;
+      return true;
+    }
+
+    public JInput(TaskID taskid, Path file, long compressedLength) {
 			this.taskid = taskid;
 
 			this.file = file;
@@ -136,6 +169,8 @@ public class JInputBuffer<K extends Object, V extends Object> extends
 			this.data = null;
 
 			this.inMemory = false;
+			
+			this.ID = generateID();
 		}
 
 		public JInput(TaskID taskid, byte[] data, int compressedLength) {
@@ -147,6 +182,14 @@ public class JInputBuffer<K extends Object, V extends Object> extends
 			this.compressedSize = compressedLength;
 
 			this.inMemory = true;
+			
+			this.ID = generateID();
+		}
+		
+		private UUID generateID(){
+		  synchronized(JInput.class){
+		    return UUID.randomUUID();
+		  }
 		}
 
 		public void discard() throws IOException {
@@ -178,6 +221,10 @@ public class JInputBuffer<K extends Object, V extends Object> extends
 				return null;
 			}
 		}
+
+    private JInputBuffer getOuterType() {
+      return JInputBuffer.this;
+    }
 	}
 
 	class ShuffleRamManager implements RamManager {
@@ -464,36 +511,49 @@ public class JInputBuffer<K extends Object, V extends Object> extends
 
 	public synchronized void freeTrailingBucket(int maxBucketSize){
 
-		if(this.lst_buckets.size() > maxBucketSize){ // only start to free when the window is filled
+	  System.out.println("Trailing bucket size="+lst_buckets.size());
+		if(this.lst_buckets.size() >= maxBucketSize){ // only start to free when the window is filled
 
 			List<JInput> oldestBucket = this.lst_buckets.remove(0);
+			System.out.println("Oldest bucket size="+oldestBucket.size());
 
 			Iterator<JInput> memIterator =  inputFilesInMemory.iterator();
+			
+			System.out.println("inputFilesInMemory BEFORE size="+inputFilesInMemory.size());
 			while(memIterator.hasNext()){
 				JInput memInput = memIterator.next();
+				System.out.println("memInput ID="+memInput.ID + "  &&  path="+memInput.file);
 				try {
 					if(oldestBucket.contains(memInput)){
+					  System.out.println("removing an old mem input");
 						memInput.discard();
-						inputFilesInMemory.remove(memInput);
+						memIterator.remove();
+						//inputFilesInMemory.remove(memInput);
 						ramManager.update(memInput.data.length);
 					}
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
 			}
-
+			System.out.println("inputFilesInMemory AFTER size="+inputFilesInMemory.size());
+			
+			System.out.println("inputFilesOnDisk BEFORE size="+inputFilesOnDisk.size());
 			Iterator<JInput> diskIterator =  inputFilesOnDisk.iterator();
 			while(diskIterator.hasNext()){
 				JInput dskInput = diskIterator.next();
+				System.out.println("disk input ID="+dskInput.ID + "  &&  path="+dskInput.file);
 				try {
 					if(oldestBucket.contains(dskInput)){
+					  System.out.println("removing an old disk input");
 						dskInput.discard();
-						inputFilesInMemory.remove(dskInput);
+						diskIterator.remove();
+						//inputFilesOnDisk.remove(dskInput);
 					}
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
 			}
+			System.out.println("inputFilesOnDisk AFTER size="+inputFilesOnDisk.size());
 		}
 		
 	}
@@ -1077,6 +1137,9 @@ public class JInputBuffer<K extends Object, V extends Object> extends
 			inputFilesOnDisk.add(input);
 			inputFilesOnDisk.notifyAll();
 			LOG.info("Total input files on disk " + inputFilesOnDisk.size());
+		}
+		synchronized (lst_buckets.get(lst_buckets.size()-1)){
+		  lst_buckets.get(lst_buckets.size()-1).add(input);
 		}
 	}
 

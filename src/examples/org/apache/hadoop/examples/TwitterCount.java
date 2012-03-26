@@ -33,8 +33,8 @@ import org.apache.hadoop.util.ToolRunner;
  * This is based on WordCount.java example
  * 
  * 
- * To run: bin/hadoop jar build/hadoop-examples.jar twittercount [-s] [-m
- * <i>maps</i>] [-r <i>reduces</i>] <i>in-dir</i> <i>out-dir</i>
+ * To run: bin/hadoop jar build/hadoop-examples.jar twittercount 
+ *             [-s] [-m <i>maps</i>] [-r <i>reduces</i>] <i>in-dir</i> <i>out-dir</i>
  */
 public class TwitterCount extends Configured implements Tool {
 
@@ -75,10 +75,16 @@ public class TwitterCount extends Configured implements Tool {
         throws IOException {
       String line = value.toString();
       StringTokenizer itr = new StringTokenizer(line);
+      
+      // THIS ONLY GETS THE FIRST TOKEN
       String tok = itr.nextToken();
       System.out.println("Tokenized string is " + tok);
       LOG.info("Tokenized string is " + tok);
-      word.set(tok);
+      //word.set(tok);
+      
+      System.out.println("seq is  " + seq);
+      word.set(Long.toString(seq));
+      
       output.collect(word, one);
       blockForce(output);
     }
@@ -154,12 +160,14 @@ public class TwitterCount extends Configured implements Tool {
           //conf.setBoolean("mapred.stream", true);
           
          
-          //conf.setBoolean("mapred.streaming.window", true);
+          // dirty hack
+          conf.setBoolean("mapred.streaming.window", true);
+          
           int windowsize = Integer.parseInt(args[++i]);
           conf.setInt("mapred.reduce.window", windowsize);
           int slidingtime = Integer.parseInt(args[++i]);
           conf.setInt("mapred.reduce.slidingtime", slidingtime);
-          // conf.setBoolean("mapred.map.pipeline", true);
+          //conf.setBoolean("mapred.map.pipeline", true);
           
           System.out.println("Done setting all window properties -- "
               + windowsize + " " + slidingtime);
@@ -187,7 +195,7 @@ public class TwitterCount extends Configured implements Tool {
     conf.setInputFormat(StreamInputFormat.class);
     // This overrides the -m option, but is needed
     conf.setNumMapTasks(num_mappers);
-    conf.setBoolean("mapred.map.pipeline", true);
+    //conf.setBoolean("mapred.map.pipeline", true);
 
     // NOTE: StreamInputFormat
     StreamInputFormat.setInputStreams(conf, other_args.get(0));
@@ -204,7 +212,7 @@ public class TwitterCount extends Configured implements Tool {
 
     System.out.println("Running TwitterCount on input: " + other_args.get(0));
     System.out.println("output: " + other_args.get(1));
-
+    
     JobClient.runJob(conf);
     return 0;
   }
