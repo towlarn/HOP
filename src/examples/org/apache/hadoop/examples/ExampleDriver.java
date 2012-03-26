@@ -22,6 +22,7 @@ import org.apache.hadoop.examples.dancing.Sudoku;
 import org.apache.hadoop.examples.terasort.TeraGen;
 import org.apache.hadoop.examples.terasort.TeraSort;
 import org.apache.hadoop.examples.terasort.TeraValidate;
+import org.apache.hadoop.mapred.lib.stream.StreamerServer;
 import org.apache.hadoop.mapred.monitor.MonitorClient;
 import org.apache.hadoop.util.ProgramDriver;
 
@@ -43,6 +44,8 @@ public class ExampleDriver {
                    "A map/reduce program that counts the words in the input files.");
       
       // continuous streamers
+      pgd.addClass("streamer", StreamerServer.class,
+               "A streamer server for continuous mapreduce programs.");
       pgd.addClass("wordcountstream", WordCountStream.class,
       			   "A map/reduce program that counts the words in the input streams.");
       pgd.addClass("twittercount", TwitterCount.class,

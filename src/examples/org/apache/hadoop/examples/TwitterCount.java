@@ -54,13 +54,21 @@ public class TwitterCount extends Configured implements Tool {
 
 		private final static IntWritable one = new IntWritable(1);
 		private Text word = new Text();
+		private long seq;
 
 		private boolean firstLine = false;
+		
+		public MapClass(){
+			super();
+			seq = 0;
+		}
 		
 		public void blockForce(OutputCollector o) {
 			JOutputBuffer jb = (JOutputBuffer) o;
 			try {
-				jb.force();
+			  //jb.force();
+				jb.stream(seq, true);
+				seq++;
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -149,7 +157,7 @@ public class TwitterCount extends Configured implements Tool {
 					conf.setInt("mapred.reduce.window", windowsize);
 					int slidingtime = Integer.parseInt(args[++i]);
 					conf.setInt("mapred.reduce.slidingtime", slidingtime);
-					conf.setBoolean("mapred.map.pipeline", true);
+					//conf.setBoolean("mapred.map.pipeline", true);
 					System.out.println("Done setting all window properties -- "+windowsize + " " + slidingtime);
 				} else {
 					other_args.add(args[i]);
@@ -175,7 +183,7 @@ public class TwitterCount extends Configured implements Tool {
 	    conf.setInputFormat(StreamInputFormat.class);
 	    // This overrides the -m option, but is needed
 	    conf.setNumMapTasks(num_mappers);
-	    conf.setBoolean("mapred.map.pipeline", true);
+	    //conf.setBoolean("mapred.map.pipeline", true);
 		
 		// NOTE: StreamInputFormat
 		StreamInputFormat.setInputStreams(conf, other_args.get(0));
