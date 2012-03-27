@@ -225,7 +225,7 @@ public class Merger {
       reader.close();
       
       if (!preserve && fs != null) {
-        fs.delete(file, false);
+    	fs.delete(file, false);
       }
     }
 

@@ -23,6 +23,7 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.PrintWriter;
 import java.net.URI;
 import java.util.HashSet;
 import java.util.List;
@@ -493,17 +494,19 @@ public class ReduceTask extends Task {
 
 			FileSystem fs = FileSystem.get(job);
 			final RecordWriter out = job.getOutputFormat().getRecordWriter(fs, job, filename, reporter);  
+			final PrintWriter out2 = new PrintWriter(System.err, true);
 			OutputCollector outputCollector = new OutputCollector() {
 				@SuppressWarnings("unchecked")
 				public void collect(Object key, Object value)
 				throws IOException {
 					out.write(key, value);
+					out2.write("k="+key+"\t"+"v="+value+'\n');
+					out2.flush();
 					reduceOutputCounter.increment(1);
 					// indicate that progress update needs to be sent
 					reporter.progress();
 					if (streamingWindow){
 					  LineRecordWriter lrw = (LineRecordWriter) out;
-					  System.err.println("Flushing lrw. Contents="+lrw.toString());
 					  lrw.out.flush();
 					}
 				}

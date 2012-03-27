@@ -479,15 +479,15 @@ public class JInputBuffer<K extends Object, V extends Object> extends
 
 		this.localFileSys = FileSystem.getLocal(conf);
 		this.rfs = ((LocalFileSystem) this.localFileSys).getRaw();
-
-		// start the on-disk-merge thread
-		localFSMergerThread = new LocalFSMerger((LocalFileSystem) localFileSys,
-				conf);
-		localFSMergerThread.start();
-
-		// start the in memory merger thread
-		inMemFSMergeThread = new InMemFSMergeThread();
-		inMemFSMergeThread.start();
+// Ivan: try to stop merging 
+//		// start the on-disk-merge thread
+//		localFSMergerThread = new LocalFSMerger((LocalFileSystem) localFileSys,
+//				conf);
+//		localFSMergerThread.start();
+//
+//		// start the in memory merger thread
+//		inMemFSMergeThread = new InMemFSMergeThread();
+//		inMemFSMergeThread.start();
 		
 		// ivan: add a new bucket to our list of buckets
 		this.lst_buckets.add(new LinkedList<JInput>());
@@ -554,6 +554,7 @@ public class JInputBuffer<K extends Object, V extends Object> extends
 				}
 			}
 			System.out.println("inputFilesOnDisk AFTER size="+inputFilesOnDisk.size());
+			oldestBucket.clear();
 		}
 		
 	}
@@ -995,10 +996,16 @@ public class JInputBuffer<K extends Object, V extends Object> extends
 			Path[] onDisk = getFiles(fs);
 			for (Path file : onDisk) {
 				onDiskBytes += fs.getFileStatus(file).getLen();
+//				diskSegments
+//						.add(new Segment<K, V>(job, fs, file, codec, false));
 				diskSegments
-						.add(new Segment<K, V>(job, fs, file, codec, false));
+						.add(new Segment<K, V>(job, fs, file, codec, true));
 			}
-			inputFilesOnDisk.clear();
+			System.out.println("before clear");
+			if (!conf.getBoolean("mapred.streaming.window",false)){
+				System.out.println("doing clear");
+				inputFilesOnDisk.clear();
+			}
 		}
 
 		LOG.info("Merging " + diskSegments.size() + " files, " + onDiskBytes
@@ -1138,6 +1145,7 @@ public class JInputBuffer<K extends Object, V extends Object> extends
 			inputFilesOnDisk.notifyAll();
 			LOG.info("Total input files on disk " + inputFilesOnDisk.size());
 		}
+			
 		synchronized (lst_buckets.get(lst_buckets.size()-1)){
 		  lst_buckets.get(lst_buckets.size()-1).add(input);
 		}
