@@ -23,6 +23,7 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.PrintWriter;
 import java.net.URI;
 import java.util.HashSet;
 import java.util.List;
@@ -434,6 +435,7 @@ public class ReduceTask extends Task {
 		// apply reduce function
 		try {
 			int count = 0;
+			System.out.println("Ivan: in ReduceTask line:438 --> about to call valusIterator");
 			ValuesIterator values = input.valuesIterator();
 			while (values.more()) {
 				count++;
@@ -463,6 +465,7 @@ public class ReduceTask extends Task {
 		boolean snapshot = snapshotFreq < 1f;
 		
 		if (reducePipeline) {
+			System.out.println("Ivan: reduceTask line 468 --> reducePipeline is TRUE !!! WHAT????");
 			inputCollector.flush();
 			if (outputBuffer == null) {
 				Progress progress = snapshot ? inputProgress : reducePhase; 
@@ -493,11 +496,14 @@ public class ReduceTask extends Task {
 
 			FileSystem fs = FileSystem.get(job);
 			final RecordWriter out = job.getOutputFormat().getRecordWriter(fs, job, filename, reporter);  
+			final PrintWriter out2 = new PrintWriter(System.err, true);
 			OutputCollector outputCollector = new OutputCollector() {
 				@SuppressWarnings("unchecked")
 				public void collect(Object key, Object value)
 				throws IOException {
 					out.write(key, value);
+					out2.write("k="+key+"\t"+"v="+value+'\n');
+					out2.flush();
 					reduceOutputCounter.increment(1);
 					// indicate that progress update needs to be sent
 					reporter.progress();

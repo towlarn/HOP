@@ -479,7 +479,7 @@ public class JInputBuffer<K extends Object, V extends Object> extends
 
 		this.localFileSys = FileSystem.getLocal(conf);
 		this.rfs = ((LocalFileSystem) this.localFileSys).getRaw();
-
+// Ivan: try to stop merging 
 		// start the on-disk-merge thread
 		localFSMergerThread = new LocalFSMerger((LocalFileSystem) localFileSys,
 				conf);
@@ -513,35 +513,39 @@ public class JInputBuffer<K extends Object, V extends Object> extends
 
 	  System.out.println("Trailing bucket size="+lst_buckets.size());
 		if(this.lst_buckets.size() >= maxBucketSize){ // only start to free when the window is filled
+			System.out.println("Ivan - in freeTrailingBucket() - JInputBuffer: 516 - inputFilesInMemory BEFORE size = " + inputFilesInMemory.size());
+			System.out.println("Ivan - in freeTrailingBucket() - JInputBuffer: 516 - inputFilesOnDisk BEFORE size = " + inputFilesOnDisk.size());
 
+			//ramManager.reset();
 			List<JInput> oldestBucket = this.lst_buckets.remove(0);
 			System.out.println("Oldest bucket size="+oldestBucket.size());
 
 			Iterator<JInput> memIterator =  inputFilesInMemory.iterator();
 			
-			System.out.println("inputFilesInMemory BEFORE size="+inputFilesInMemory.size());
+			//System.out.println("inputFilesInMemory BEFORE size="+inputFilesInMemory.size());
 			while(memIterator.hasNext()){
 				JInput memInput = memIterator.next();
-				System.out.println("memInput ID="+memInput.ID + "  &&  path="+memInput.file);
+				//System.out.println("memInput ID="+memInput.ID + "  &&  path="+memInput.file);
 				try {
 					if(oldestBucket.contains(memInput)){
-					  System.out.println("removing an old mem input");
+						System.out.println("removing an old mem input");
+						ramManager.update(memInput.data.length);
 						memInput.discard();
 						memIterator.remove();
 						//inputFilesInMemory.remove(memInput);
-						ramManager.update(memInput.data.length);
+
 					}
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
 			}
-			System.out.println("inputFilesInMemory AFTER size="+inputFilesInMemory.size());
+			//System.out.println("inputFilesInMemory AFTER size="+inputFilesInMemory.size());
 			
-			System.out.println("inputFilesOnDisk BEFORE size="+inputFilesOnDisk.size());
+			//System.out.println("inputFilesOnDisk BEFORE size="+inputFilesOnDisk.size());
 			Iterator<JInput> diskIterator =  inputFilesOnDisk.iterator();
 			while(diskIterator.hasNext()){
 				JInput dskInput = diskIterator.next();
-				System.out.println("disk input ID="+dskInput.ID + "  &&  path="+dskInput.file);
+				//System.out.println("disk input ID="+dskInput.ID + "  &&  path="+dskInput.file);
 				try {
 					if(oldestBucket.contains(dskInput)){
 					  System.out.println("removing an old disk input");
@@ -553,14 +557,24 @@ public class JInputBuffer<K extends Object, V extends Object> extends
 					e.printStackTrace();
 				}
 			}
-			System.out.println("inputFilesOnDisk AFTER size="+inputFilesOnDisk.size());
+			//System.out.println("inputFilesOnDisk AFTER size="+inputFilesOnDisk.size());
+			oldestBucket.clear();
 		}
-		
+		System.out.println("Ivan - in freeTrailingBucket() - JInputBuffer: 561 - inputFilesInMemory AFTER size = " + inputFilesInMemory.size());
+		System.out.println("Ivan - in freeTrailingBucket() - JInputBuffer: 561- inputFilesOnDisk AFTER size = " + inputFilesOnDisk.size());
+		System.out.println("Ivan - inputFilesOnDisk before clearing in freeTrailingBucket: ");
+		for(JInput j : inputFilesOnDisk){
+			System.out.println("Ivan - " + j.ID);
+		}
+		//inputFilesOnDisk.clear();
 	}
 	
 	@Override
 	public synchronized void free() {
-
+		
+		System.out.println("Ivan - in free() - JInputBuffer: 566 - inputFilesInMemory BEFORE size = " + inputFilesInMemory.size());
+		System.out.println("Ivan - in free() - JInputBuffer: 566 - inputFilesOnDisk BEFORE size = " + inputFilesOnDisk.size());
+		
 		ramManager.reset();
 		for (JInput memInput : inputFilesInMemory) {
 			try {
@@ -577,6 +591,8 @@ public class JInputBuffer<K extends Object, V extends Object> extends
 			}
 		}
 		
+		System.out.println("Ivan - in free() - JInputBuffer: 583 - inputFilesInMemory AFTER size = " + inputFilesInMemory.size());
+		System.out.println("Ivan - in free() - JInputBuffer: 583 - inputFilesOnDisk AFTER size = " + inputFilesOnDisk.size());
 
 
 		inputFilesInMemory.clear();
@@ -584,6 +600,7 @@ public class JInputBuffer<K extends Object, V extends Object> extends
 	}
 
 	public void flush() throws IOException {
+		System.out.println("In JInput Buffer --> Flushing ...");
 		flush(0); // Perform full flush
 	}
 
@@ -662,6 +679,7 @@ public class JInputBuffer<K extends Object, V extends Object> extends
 
 	@Override
 	public ValuesIterator<K, V> valuesIterator() throws IOException {
+		System.out.println("Ivan: calling valuesIterator...");
 		RawKeyValueIterator kvIter = this.createKVIterator(conf, rfs, reporter);
 		return new ValuesIterator<K, V>(kvIter, comparator, keyClass, valClass,
 				conf, reporter);
@@ -694,8 +712,8 @@ public class JInputBuffer<K extends Object, V extends Object> extends
 		// 2. There is space available in the inmem fs
 
 		// Check if this map-output can be saved in-memory
-		boolean shuffleInMemory = ramManager.canFitInMemory(decompressedLength);
-
+		// boolean shuffleInMemory = ramManager.canFitInMemory(decompressedLength);
+		boolean shuffleInMemory = false;
 		// Shuffle
 		if (shuffleInMemory
 				&& shuffleInMemory(taskid, istream, (int) decompressedLength,
@@ -719,6 +737,9 @@ public class JInputBuffer<K extends Object, V extends Object> extends
 	private boolean shuffleInMemory(TaskID taskid, InputStream ins,
 			int decompressedLength, int compressedLength) throws IOException {
 		// Reserve ram for the map-output
+		
+		System.out.println("Ivan - in shuffleInMemory() - JInputBuffer: 731 - inputFilesInMemory BEFORE size = " + inputFilesInMemory.size());
+
 		boolean createdNow = ramManager.reserve(decompressedLength);
 
 		if (!createdNow) {
@@ -808,6 +829,7 @@ public class JInputBuffer<K extends Object, V extends Object> extends
 
 		if (input != null) {
 			synchronized (inputFilesInMemory) {
+				System.out.println("Ivan - in shuffleInMemory - adding JInput to inputFilesInMemory....");
 				inputFilesInMemory.add(input);
 			}
 			
@@ -815,13 +837,19 @@ public class JInputBuffer<K extends Object, V extends Object> extends
 				this.lst_buckets.get(this.lst_buckets.size()-1).add(input);
 			}
 			
+			System.out.println("Ivan - in shuffleInMemory() - JInputBuffer: 830 - inputFilesInMemory AFTER size = " + inputFilesInMemory.size());
+
 			return true;
 		}
+		System.out.println("Ivan - in shuffleInMemory() - JInputBuffer: 830 - inputFilesInMemory AFTER size = " + inputFilesInMemory.size());
+
 		return false;
 	}
 
 	private void shuffleToDisk(TaskID taskid, InputStream ins, Path filename,
 			long mapOutputLength) throws IOException {
+		System.out.println("Ivan - in shuffleToDisk() - JInputBuffer: 850 - inputFilesOnDisk Before size = " + inputFilesOnDisk.size());
+
 		JInput input = new JInput(taskid, filename, mapOutputLength);
 
 		// Copy data to local-disk
@@ -889,6 +917,9 @@ public class JInputBuffer<K extends Object, V extends Object> extends
 
 		if (input != null)
 			addInputFilesOnDisk(input);
+		
+		System.out.println("Ivan - in shuffleToDisk() - JInputBuffer: 920 - inputFilesOnDisk After size = " + inputFilesOnDisk.size());
+
 	}
 
 	private void configureClasspath(JobConf conf) throws IOException {
@@ -927,6 +958,7 @@ public class JInputBuffer<K extends Object, V extends Object> extends
 
 	private long createInMemorySegments(List<Segment<K, V>> inMemorySegments,
 			long leaveBytes) throws IOException {
+		System.out.println("Modifying inputFilesInMemory ---> In createInMemorySegments");
 		long totalSize = 0L;
 		synchronized (inputFilesInMemory) {
 			// fullSize could come from the RamManager, but files can be
@@ -935,15 +967,26 @@ public class JInputBuffer<K extends Object, V extends Object> extends
 			for (JInput in : inputFilesInMemory) {
 				fullSize += in.data.length;
 			}
+			int index = 0;
+			boolean isStreamingWindow = conf.getBoolean("mapred.streaming.window",false);
 			while (fullSize > leaveBytes) {
-				JInput in = inputFilesInMemory.remove(0);
+				final JInput in;
+				if (isStreamingWindow){
+					in = inputFilesInMemory.get(index);
+					index++;
+				} else {
+					in = inputFilesInMemory.remove(0);
+				}
 				totalSize += in.data.length;
 				fullSize -= in.data.length;
 				Reader<K, V> reader = new InMemoryReader<K, V>(ramManager,
 						in.taskid, in.data, 0, in.data.length);
 				Segment<K, V> segment = new Segment<K, V>(reader, true);
 				inMemorySegments.add(segment);
-				in.discard();
+				if (!isStreamingWindow){
+					in.discard();
+				}
+				
 			}
 		}
 		return totalSize;
@@ -974,7 +1017,7 @@ public class JInputBuffer<K extends Object, V extends Object> extends
 	@SuppressWarnings("unchecked")
 	private RawKeyValueIterator createKVIterator(JobConf job, FileSystem fs,
 			Reporter reporter) throws IOException {
-
+		//System.out.println("Modifying inputFilesInMemory ---> In createKVIterator");
 		final Path tmpDir = new Path(task.getTaskID().toString());
 		TaskID taskid = null;
 
@@ -995,10 +1038,16 @@ public class JInputBuffer<K extends Object, V extends Object> extends
 			Path[] onDisk = getFiles(fs);
 			for (Path file : onDisk) {
 				onDiskBytes += fs.getFileStatus(file).getLen();
+//				diskSegments
+//						.add(new Segment<K, V>(job, fs, file, codec, false));
 				diskSegments
-						.add(new Segment<K, V>(job, fs, file, codec, false));
+						.add(new Segment<K, V>(job, fs, file, codec, true));
 			}
-			inputFilesOnDisk.clear();
+			//System.out.println("before clear");
+			if (!conf.getBoolean("mapred.streaming.window",false)){
+				System.out.println("doing clear");
+				inputFilesOnDisk.clear();
+			}
 		}
 
 		LOG.info("Merging " + diskSegments.size() + " files, " + onDiskBytes
@@ -1020,6 +1069,7 @@ public class JInputBuffer<K extends Object, V extends Object> extends
 
 		// Create and return a merger
 		if (0 != onDiskBytes) {
+			System.out.println("Ivan - in createKVIterator - 1");
 			// build final list of segments from merged backed by disk + in-mem
 			final int numInMemSegments = finalSegments.size();
 			finalSegments.addAll(diskSegments);
@@ -1031,6 +1081,7 @@ public class JInputBuffer<K extends Object, V extends Object> extends
 					comparator, reporter, false, null, null);
 		} else {
 			// All that remains is in-memory segments
+			System.out.println("Ivan - in createKVIterator - 2");
 			LOG.info("Merging " + finalSegments.size() + " segments, "
 					+ inMemBytes + " bytes from memory");
 			riter = Merger.merge(job, fs, keyClass, valClass, finalSegments,
@@ -1039,6 +1090,7 @@ public class JInputBuffer<K extends Object, V extends Object> extends
 		}
 
 		if (open && taskid != null) {
+			System.out.println("Ivan - in createKVIterator - 3");
 			return new RawKVIteratorWriter(riter, taskid, inMemBytes
 					+ onDiskBytes);
 		}
@@ -1080,9 +1132,13 @@ public class JInputBuffer<K extends Object, V extends Object> extends
 		public void close() throws IOException {
 			writer.close();
 
-			// Register the output of the merge iterator
-			FileStatus status = localFileSys.getFileStatus(outputPath);
-			addInputFilesOnDisk(new JInput(taskid, outputPath, status.getLen()));
+			if (!conf.getBoolean("mapred.streaming.window",false)){
+				// Register the output of the merge iterator
+				FileStatus status = localFileSys.getFileStatus(outputPath);
+				System.out.println("Ivan - RawKVIteratorWriter.close() - calling addInputFilesOnDisk");
+				addInputFilesOnDisk(new JInput(taskid, outputPath, status.getLen()));
+			}
+			
 		}
 
 		@Override
@@ -1134,10 +1190,12 @@ public class JInputBuffer<K extends Object, V extends Object> extends
 
 	private void addInputFilesOnDisk(JInput input) throws IOException {
 		synchronized (inputFilesOnDisk) {
+			System.out.println("Ivan - addInputFilesOnDisk - adding JInput to intputFilesOnDisk....JInput UUID = " + input.ID);
 			inputFilesOnDisk.add(input);
 			inputFilesOnDisk.notifyAll();
 			LOG.info("Total input files on disk " + inputFilesOnDisk.size());
 		}
+			
 		synchronized (lst_buckets.get(lst_buckets.size()-1)){
 		  lst_buckets.get(lst_buckets.size()-1).add(input);
 		}
