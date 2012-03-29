@@ -435,6 +435,7 @@ public class ReduceTask extends Task {
 		// apply reduce function
 		try {
 			int count = 0;
+			System.out.println("Ivan: in ReduceTask line:438 --> about to call valusIterator");
 			ValuesIterator values = input.valuesIterator();
 			while (values.more()) {
 				count++;
@@ -464,6 +465,7 @@ public class ReduceTask extends Task {
 		boolean snapshot = snapshotFreq < 1f;
 		
 		if (reducePipeline) {
+			System.out.println("Ivan: reduceTask line 468 --> reducePipeline is TRUE !!! WHAT????");
 			inputCollector.flush();
 			if (outputBuffer == null) {
 				Progress progress = snapshot ? inputProgress : reducePhase; 
