@@ -503,7 +503,6 @@ public class ReduceTask extends Task {
 					reporter.progress();
 					if (streamingWindow){
 					  LineRecordWriter lrw = (LineRecordWriter) out;
-					  System.err.println("Flushing lrw. Contents="+lrw.toString());
 					  lrw.out.flush();
 					}
 				}
