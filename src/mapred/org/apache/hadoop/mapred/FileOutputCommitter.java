@@ -197,8 +197,19 @@ public class FileOutputCommitter extends OutputCommitter {
   
   Path getWorkPath(TaskAttemptContext taskContext, Path basePath) 
   throws IOException {
+	  return getWorkPath(taskContext, basePath, false);
+  }
+  
+  Path getWorkPath(TaskAttemptContext taskContext, Path basePath, boolean isStreamingWindow) 
+  throws IOException {
+
     // ${mapred.out.dir}/_temporary
-    Path jobTmpDir = new Path(basePath, FileOutputCommitter.TEMP_DIR_NAME);
+    Path jobTmpDir; 
+    if (isStreamingWindow)
+    	jobTmpDir = basePath;
+    else 
+    	jobTmpDir = new Path(basePath, FileOutputCommitter.TEMP_DIR_NAME);
+    
     FileSystem fs = jobTmpDir.getFileSystem(taskContext.getJobConf());
     if (!fs.exists(jobTmpDir)) {
       throw new IOException("The temporary job-output directory " + 

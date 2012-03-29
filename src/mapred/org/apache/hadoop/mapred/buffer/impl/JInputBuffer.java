@@ -479,11 +479,14 @@ public class JInputBuffer<K extends Object, V extends Object> extends
 
 		this.localFileSys = FileSystem.getLocal(conf);
 		this.rfs = ((LocalFileSystem) this.localFileSys).getRaw();
-// Ivan: try to stop merging 
-		// start the on-disk-merge thread
-		localFSMergerThread = new LocalFSMerger((LocalFileSystem) localFileSys,
-				conf);
-		localFSMergerThread.start();
+		
+		// Ivan: try to stop merging 
+		// do not start the on-disk-merge thread if streaming window is enabled
+		if (!conf.getBoolean("mapred.streaming.window",false)){
+			localFSMergerThread = new LocalFSMerger((LocalFileSystem) localFileSys,
+					conf);
+			localFSMergerThread.start();
+		}
 
 		// start the in memory merger thread
 		inMemFSMergeThread = new InMemFSMergeThread();

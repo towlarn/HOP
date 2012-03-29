@@ -4,6 +4,6 @@ bin/hadoop fs -rmr output
 bin/stop-all.sh
 
 rm -r logs/*
-rm -r /tmp/hadoop-$USERNAME
-rm -r /tmp/hadoop-$USERNAME*
+rm -r /temp/$USERNAME
+rm -r /temp/$USERNAME*
 rm -r output

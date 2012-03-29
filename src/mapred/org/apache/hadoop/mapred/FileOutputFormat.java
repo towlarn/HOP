@@ -231,8 +231,8 @@ public abstract class FileOutputFormat<K, V> implements OutputFormat<K, V> {
     TaskAttemptContext context = new TaskAttemptContext(conf,
                 TaskAttemptID.forName(conf.get("mapred.task.id")));
     if (committer instanceof FileOutputCommitter) {
-      workPath = ((FileOutputCommitter)committer).getWorkPath(context,
-                                                              outputPath);
+      workPath = ((FileOutputCommitter)committer).getWorkPath(
+    		  context, outputPath, conf.getBoolean("mapred.streaming.window", false));
     }
     
     // ${mapred.out.dir}/_temporary/_${taskid}/${name}

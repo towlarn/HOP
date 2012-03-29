@@ -176,6 +176,7 @@ public class ReduceTask extends Task {
 	
 	// thanat: Streaming Window mode
 	private boolean streamingWindow = false;
+	private int outputWindowNumber = 0;
 	
 	private float   snapshotThreshold = 1f;
 	private float   snapshotFreq    = 1f;
@@ -494,8 +495,15 @@ public class ReduceTask extends Task {
 					getSnapshotOutputName(getPartition(), inputProgress.get()) :
 				    getOutputName(getPartition());
 
+			if (streamingWindow){
+				filename = getOutputName(outputWindowNumber++);
+				System.out.println("HDFS File name="+filename);
+			}
+					
 			FileSystem fs = FileSystem.get(job);
+			System.err.println("ReduceTask Filesystem.class="+fs.getClass());
 			final RecordWriter out = job.getOutputFormat().getRecordWriter(fs, job, filename, reporter);  
+			System.err.println("ReduceTask RecordWriter.class="+out.getClass());
 			final PrintWriter out2 = new PrintWriter(System.err, true);
 			OutputCollector outputCollector = new OutputCollector() {
 				@SuppressWarnings("unchecked")
@@ -513,7 +521,7 @@ public class ReduceTask extends Task {
 					}
 				}
 			};
-			LOG.debug("ReduceTask: create final output file " + filename);
+			LOG.info("ReduceTask: create final output file " + filename);
 			reduce(job, inputCollector, outputCollector, reporter, reduceProgress);
 			out.close(reporter);
 		}
