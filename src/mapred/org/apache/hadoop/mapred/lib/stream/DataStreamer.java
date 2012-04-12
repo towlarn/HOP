@@ -15,7 +15,8 @@ public class DataStreamer implements Runnable {
 		"jdbc:mysql://kozmo.cis.upenn.edu:3306/twitter02?user=towlarn&password=DU4YzhjM";
 	
 	private static final String query = 
-		"select uid,timestamp,text from streaming_data ORDER BY timestamp asc";
+		"select timestamp, text from streaming_data ORDER BY timestamp asc";
+		//"select uid,timestamp,text from streaming_data ORDER BY timestamp asc";
 	
 	
 	private static int queries_executed = 0; 
@@ -63,9 +64,9 @@ public class DataStreamer implements Runnable {
 
 			if (rs.next()){
 				do {
-					//Timestamp x = rs.getTimestamp("timestamp");
+					//rs.getString("uid") + " " + ;
 
-					String str = rs.getString("uid") + " " + rs.getString("timestamp") + " " + rs.getString("text");
+					String str = rs.getString("timestamp") + " " + rs.getString("text");
 					//System.out.println(current_id + "(prod): "+ str);
 					this.queue.put(str);
 					

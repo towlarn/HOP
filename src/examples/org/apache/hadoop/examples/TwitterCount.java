@@ -76,17 +76,28 @@ public class TwitterCount extends Configured implements Tool {
       String line = value.toString();
       StringTokenizer itr = new StringTokenizer(line);
       
+      while (itr.hasMoreTokens()){
+    	  String tok = itr.nextToken();
+    	  
+    	  // convert to lower case
+    	  tok = tok.toLowerCase();
+    	  
+    	  System.out.println("Tokenized string is " + tok);
+          LOG.info("Tokenized string is " + tok);
+          word.set(tok);
+          
+          output.collect(word, one);
+          blockForce(output);
+      }
+      
+      /*
       // THIS ONLY GETS THE FIRST TOKEN
       String tok = itr.nextToken();
-      System.out.println("Tokenized string is " + tok);
-      LOG.info("Tokenized string is " + tok);
-      //word.set(tok);
-      
-      System.out.println("seq is  " + seq);
       word.set(Long.toString(seq));
       
       output.collect(word, one);
       blockForce(output);
+      */
     }
   }
 

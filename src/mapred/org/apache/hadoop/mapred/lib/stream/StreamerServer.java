@@ -26,7 +26,8 @@ public class StreamerServer {
 
 	public static final int QUEUE_SIZE = 10 * 100;
 	public static final long WAIT_THRESHOLD = 1000; // in milliseconds
-	public static double SPEEDUP_FACTOR = 5.0;
+	public static double SPEEDUP_FACTOR = 30.0;
+	public static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
 	
 	private int port;
 	private int rows;
@@ -122,7 +123,7 @@ public class StreamerServer {
 			Matcher m = p.matcher(data);
 			if(m.find()){
 				String t = m.group();
-				SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+				SimpleDateFormat sdf = new SimpleDateFormat(DATE_FORMAT);
 				
 				try {
 					Date date = sdf.parse(t);
@@ -166,7 +167,11 @@ public class StreamerServer {
 							setInitialTimes(time, System.currentTimeMillis());
 							timeSet = true;
 						}
-						System.out.println(data);
+						
+						// TODO: Get rid of dates -- quick fix
+						data = data.substring(DATE_FORMAT.length()+2);
+						
+						//System.out.println(data);
 						out.println(data);
 						i++;
 					}

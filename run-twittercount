@@ -3,4 +3,5 @@
 ./cleanup
 rm -r /tmp/hadoop*
 ./clean-start
-bin/hadoop jar build/hadoop-hop-0.2-examples.jar twittercount -w 10 2 127.0.0.1,6000 output
+sleep 10
+bin/hadoop jar build/hadoop-hop-0.2-examples.jar twittercount -w 50 10 127.0.0.1,6000 file:///home/towlarn/hop/output

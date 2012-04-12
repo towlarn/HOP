@@ -215,9 +215,15 @@ public class FileOutputCommitter extends OutputCommitter {
       throw new IOException("The temporary job-output directory " + 
           jobTmpDir.toString() + " doesn't exist!"); 
     }
-    // ${mapred.out.dir}/_temporary/_${taskid}
-    String taskid = taskContext.getTaskAttemptID().toString();
-    Path taskTmpDir = new Path(jobTmpDir, "_" + taskid);
+    
+    Path taskTmpDir;
+    if (isStreamingWindow){
+    	taskTmpDir = jobTmpDir;
+    } else {
+    	// ${mapred.out.dir}/_temporary/_${taskid}
+    	String taskid = taskContext.getTaskAttemptID().toString();
+    	taskTmpDir = new Path(jobTmpDir, "_" + taskid);
+    }
     if (!fs.mkdirs(taskTmpDir)) {
       throw new IOException("Mkdirs failed to create " 
           + taskTmpDir.toString());

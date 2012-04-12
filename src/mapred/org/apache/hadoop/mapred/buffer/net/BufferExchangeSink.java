@@ -252,7 +252,7 @@ public class BufferExchangeSink<K extends Object, V extends Object> implements B
 	 * @return true if all inputs have sent all their input.
 	 */
 	public boolean complete() {
-		return this.successful.size() == numInputs;
+		return this.successful.size() >= numInputs;
 	}
 
 	/**
