@@ -11,7 +11,7 @@ import java.util.regex.Pattern;
 
 public class WordStemmer {
 
-	public static final String WORDLIST = "word_stem_small.txt"; // word_stem.txt
+	public static final String WORDLIST = "/home/towlarn/hop/word_stem.txt"; // word_stem.txt
 	private static WordStemmer _instance = null;
 
 	public static WordStemmer getInstance() {

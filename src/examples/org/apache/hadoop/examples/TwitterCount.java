@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.StringTokenizer;
 
 import org.apache.commons.logging.Log;
@@ -80,7 +81,7 @@ public class TwitterCount extends Configured implements Tool {
     	  String tok = itr.nextToken();
     	  
     	  System.out.println("Tokenized:\t" + tok);
-    	  LOG.info("TTokenized:\t" + tok);
+    	  LOG.info("Tokenized:\t" + tok);
     	  tok = filterWord(tok);
     	  System.out.println("Filtered:\t" + tok);
     	  LOG.info("Filtered:\t" + tok);
@@ -115,10 +116,12 @@ public class TwitterCount extends Configured implements Tool {
     	WordFilter wf = WordFilter.getInstance();
     	WordStemmer ws = WordStemmer.getInstance();
     	
+    	//System.out.println("word:\t"+word+" "+word.toLowerCase());
     	String temp = word.toLowerCase();
-    	temp = WordFilter.filterPunctuation(word);
+    	temp = WordFilter.filterPunctuation(temp);
     	
     	temp = ws.getStem(temp);
+    	//System.out.println("Contains:\t"+temp+" "+wf.contains(temp)+" "+wf.wlist.size()+ " "+ws.getMap().size());
     	if (wf.contains(temp))
     		return null;
     	else
