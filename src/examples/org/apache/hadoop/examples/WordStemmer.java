@@ -73,10 +73,26 @@ public class WordStemmer {
 		return map;
 	}
 	
+	/**
+	 * 
+	 * @param word
+	 * @return word's stem if one is found. word otherwise.
+	 */
+	public String getStem(String word){
+		if (map.containsKey(word))
+			return map.get(word);
+		else
+			return word;
+	}
+	
 	public static void main(String[] args){
 		WordStemmer ws = WordStemmer.getInstance();
 		for(Map.Entry<String, String> entry : ws.getMap().entrySet()){
 			System.out.println(entry.getKey() + ":\t"+entry.getValue());
 		}
+		System.out.println(ws.getStem("thinned"));
+		System.out.println(ws.getStem("abandoned"));
+		System.out.println(ws.getStem("thinnest"));
+		System.out.println(ws.getStem("hello"));
 	}
 }

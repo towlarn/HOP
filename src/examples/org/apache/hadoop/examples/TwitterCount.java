@@ -79,15 +79,18 @@ public class TwitterCount extends Configured implements Tool {
       while (itr.hasMoreTokens()){
     	  String tok = itr.nextToken();
     	  
-    	  // convert to lower case
-    	  tok = tok.toLowerCase();
-    	  
-    	  System.out.println("Tokenized string is " + tok);
-          LOG.info("Tokenized string is " + tok);
-          word.set(tok);
+    	  System.out.println("Tokenized:\t" + tok);
+    	  LOG.info("TTokenized:\t" + tok);
+    	  tok = filterWord(tok);
+    	  System.out.println("Filtered:\t" + tok);
+    	  LOG.info("Filtered:\t" + tok);
           
-          output.collect(word, one);
-          blockForce(output);
+    	  if (tok != null){
+    		  word.set(tok);
+              
+              output.collect(word, one);
+              blockForce(output);
+    	  }
       }
       
       /*
@@ -99,6 +102,29 @@ public class TwitterCount extends Configured implements Tool {
       blockForce(output);
       */
     }
+    
+    /**
+     * Removes punctuation from the word, then finds the word's stem.
+     * Then matches whether the word is a common word.
+     * If so, return null
+     * 
+     * @param word
+     * @return the filtered, stemmed word. null if word is common.
+     */
+    private String filterWord(String word){
+    	WordFilter wf = WordFilter.getInstance();
+    	WordStemmer ws = WordStemmer.getInstance();
+    	
+    	String temp = word.toLowerCase();
+    	temp = WordFilter.filterPunctuation(word);
+    	
+    	temp = ws.getStem(temp);
+    	if (wf.contains(temp))
+    		return null;
+    	else
+    		return temp;
+    }
+    
   }
 
   /**
