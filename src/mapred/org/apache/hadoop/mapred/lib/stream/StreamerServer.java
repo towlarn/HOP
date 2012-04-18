@@ -8,6 +8,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
 import java.sql.SQLException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -44,6 +45,8 @@ public class StreamerServer {
 	private long initialTime = -1;
 	private boolean timeSet;
 	
+	private Socket textOutSocket;
+	
 	public StreamerServer(int port, int offset, int rows){
 		this.port = port;
 		this.rows = rows;
@@ -55,7 +58,19 @@ public class StreamerServer {
 		
 		try {
 			init();
+			initTextOutSocket();
 		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public void initTextOutSocket(){
+		try {
+			textOutSocket = new Socket("localhost", 5999);
+		} catch (UnknownHostException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
@@ -144,6 +159,8 @@ public class StreamerServer {
 				int i = 0;
 				try {
 					PrintWriter out = new PrintWriter(s.getOutputStream(), true);
+					PrintWriter textOut = null;
+					
 					while(true){
 						// NOTE: possible race condition between peek() and take(), although this shouldn't matter too much.
 						String data = queue.peek();
@@ -171,7 +188,14 @@ public class StreamerServer {
 						// TODO: Get rid of dates -- quick fix
 						data = data.substring(DATE_FORMAT.length()+2);
 						
-						//System.out.println(data);
+						
+						System.out.println(i+": "+data);
+						// for the GUI 
+						if (textOutSocket != null){
+							textOut = new PrintWriter(textOutSocket.getOutputStream(), true);
+							textOut.println(i+": "+data);
+						}
+						
 						out.println(data);
 						i++;
 					}

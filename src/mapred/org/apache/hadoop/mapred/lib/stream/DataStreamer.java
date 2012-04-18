@@ -60,13 +60,15 @@ public class DataStreamer implements Runnable {
 			// form query
 			int offset = getQueryOffset();
 			String q = query + " limit " + this.rows + " offset " + offset;
+			System.out.println("Executing query:\n\t"+q);
 			rs = stmt.executeQuery(q);
+			System.out.println("Done executing query:\n\t"+q);
 
 			if (rs.next()){
 				do {
-					//rs.getString("uid") + " " + ;
-
-					String str = rs.getString("timestamp") + " " + rs.getString("text");
+					String str = "";
+					//str += "@"+rs.getString("screen_name") + ": ";
+					str += rs.getString("timestamp") + " " + rs.getString("text");
 					//System.out.println(current_id + "(prod): "+ str);
 					this.queue.put(str);
 					

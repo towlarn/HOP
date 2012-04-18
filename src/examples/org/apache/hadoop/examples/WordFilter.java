@@ -11,7 +11,7 @@ public class WordFilter {
 	
 	public static final String PUNCTUATION_FILTER_REGEX = "[\"?!()\\[\\];,]";
 	
-	public static final String WORDLIST = "/home/towlarn/hop/filtered_words.txt"; // word_stem.txt
+	public static final String WORDLIST = "/home/towlarn/hop/filtered_words.txt";
 	private static WordFilter _instance = null;
 
 	public static WordFilter getInstance() {
