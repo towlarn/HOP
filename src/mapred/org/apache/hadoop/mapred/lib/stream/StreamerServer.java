@@ -27,7 +27,7 @@ public class StreamerServer {
 
 	public static final int QUEUE_SIZE = 10 * 100;
 	public static final long WAIT_THRESHOLD = 1000; // in milliseconds
-	public static double SPEEDUP_FACTOR = 30.0;
+	public static double SPEEDUP_FACTOR = 100.0;
 	public static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
 	
 	private int port;
@@ -68,10 +68,11 @@ public class StreamerServer {
 		try {
 			textOutSocket = new Socket("localhost", 5999);
 		} catch (UnknownHostException e) {
-			e.printStackTrace();
+			//e.printStackTrace();
+			System.out.println("StreamerServer: Could not connect to GUI socket");
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			//e.printStackTrace();
+			System.out.println("StreamerServer: Could not connect to GUI socket");
 		}
 	}
 	
