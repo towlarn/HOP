@@ -25,7 +25,7 @@ import java.util.regex.Pattern;
 
 public class StreamerServer {
 
-	public static final int QUEUE_SIZE = 10 * 100;
+	public static final int QUEUE_SIZE = 100 * 1000;
 	public static final long WAIT_THRESHOLD = 1000; // in milliseconds
 	public static double SPEEDUP_FACTOR = 100.0;
 	public static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
@@ -190,7 +190,7 @@ public class StreamerServer {
 						data = data.substring(DATE_FORMAT.length()+2);
 						
 						
-						System.out.println(i+": "+data);
+						System.out.println(i+" ("+queue.size()+"): "+data);
 						// for the GUI 
 						if (textOutSocket != null){
 							textOut = new PrintWriter(textOutSocket.getOutputStream(), true);

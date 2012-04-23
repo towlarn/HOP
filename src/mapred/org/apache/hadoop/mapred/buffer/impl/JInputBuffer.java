@@ -715,8 +715,8 @@ public class JInputBuffer<K extends Object, V extends Object> extends
 		// 2. There is space available in the inmem fs
 
 		// Check if this map-output can be saved in-memory
-		// boolean shuffleInMemory = ramManager.canFitInMemory(decompressedLength);
-		boolean shuffleInMemory = false;
+		boolean shuffleInMemory = ramManager.canFitInMemory(decompressedLength);
+		//boolean shuffleInMemory = false;
 		// Shuffle
 		if (shuffleInMemory
 				&& shuffleInMemory(taskid, istream, (int) decompressedLength,
